@@ -139,7 +139,7 @@ get_os_name() { #input: build id Output: human-readable name of operating system
   echo -e "$version build $build"
 }
 
-[ "$1" == 'source' ] && return 0
+[ "$1" == 'source' ] && return 0 #If being sourced, exit here at this point in the script
 #past this point, this script is being run, not sourced.
 
 #Ensure this script's parent directory is valid

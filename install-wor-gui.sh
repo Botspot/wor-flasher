@@ -27,6 +27,7 @@ fi
 #source the script to acquire necessary functions
 source "$cli_script" source #by sourcing, this script checks for and applies updates.
 
+#this array stores flags that are used in all yad windows - saves on the typing and makes it easy to change an attribute on all dialogs from one place.
 yadflags=(--center --width=310 --height=250 --window-icon="$DIRECTORY/logo.png" --title="Windows on Raspberry")
 
 { #choose destination RPi model and windows build ID
@@ -207,19 +208,35 @@ CONFIG_TXT="$(echo -e "$CONFIG_TXT")"
 echo -e "CONFIG_TXT: ⤵\n$(echo "$CONFIG_TXT" | sed 's/^/  > /g')\nCONFIG_TXT: ⤴"
 
 }
+
 echo "Launching install-wor.sh in a separate terminal"
 
-"$DIRECTORY/terminal-run" "trap 'sleep infinity' EXIT
-set -a
-DL_DIR="\""$DL_DIR"\""
-UUID="\""$UUID"\""
-WIN_LANG="\""$WIN_LANG"\""
-RPI_MODEL="\""$RPI_MODEL"\""
-DEVICE="\""$DEVICE"\""
-CAN_INSTALL_ON_SAME_DRIVE="\""$CAN_INSTALL_ON_SAME_DRIVE"\""
-CONFIG_TXT="\""$CONFIG_TXT"\""
-RUN_MODE=gui
-$cli_script
-echo 'Close this terminal to exit.'" "Running $(basename "$cli_script")"
-
+#set this to false for a dry run.
+if true;then
+  #run the install-wor.sh script in a terminal. If it succeeds, the terminal closes automatically. If it fails, the terminal stays open forever until you close it.
+  "$DIRECTORY/terminal-run" "set -a
+  DL_DIR="\""$DL_DIR"\""
+  UUID="\""$UUID"\""
+  WIN_LANG="\""$WIN_LANG"\""
+  RPI_MODEL="\""$RPI_MODEL"\""
+  DEVICE="\""$DEVICE"\""
+  CAN_INSTALL_ON_SAME_DRIVE="\""$CAN_INSTALL_ON_SAME_DRIVE"\""
+  CONFIG_TXT="\""$CONFIG_TXT"\""
+  RUN_MODE=gui
+  $cli_script || sleep infinity" "Running $(basename "$cli_script")"
+fi
 echo "The terminal running install-wor.sh has been closed."
+
+#display "next steps" window
+yad "${yadflags[@]}" --image="${DIRECTORY}/next-steps.png" \
+  --button=Close:0
+
+
+
+
+
+
+
+
+
+
