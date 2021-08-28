@@ -11,24 +11,28 @@ error() { #Input: error message
 
 RUN_MODE=gui #this variable is detected by install-wor.sh to display gui error messages
 
-#set variable for directory to download component files to
+#Determine the directory to download windows component files to
 [ -z "$DL_DIR" ] && DL_DIR="$HOME/wor-flasher-files"
 echo "DL_DIR: $DL_DIR"
 
+#Determine the directory that contains this script
+[ -z "$DIRECTORY" ] && DIRECTORY="$(readlink -f "$(dirname "$0")")"
+[ ! -e "$DIRECTORY" ] && error "install-wor-gui.sh: Failed to determine the directory that contains this script. Try running this script with full paths."
+
 #this script and cli-based install-wor.sh should be in same directory.
-cli_script="$(dirname "$0")/install-wor.sh"
+cli_script="$DIRECTORY/install-wor.sh"
 if [ ! -f "$cli_script" ];then
   error "No script found named install-wor.sh\nBoth scripts must be in the same directory."
-else #install-wor.sh exists
-  source "$cli_script" source
 fi
+#source the script to acquire necessary functions
+source "$cli_script" source #by sourcing, this script checks for and applies updates.
 
-yadflags=(--center --width=310 --height=250 --window-icon="$(dirname "$0")/logo.png" --title="Windows on Raspberry")
+yadflags=(--center --width=310 --height=250 --window-icon="$DIRECTORY/logo.png" --title="Windows on Raspberry")
 
 { #choose destination RPi model and windows build ID
 if [ -z "$RPI_MODEL" ] || [ -z "$UUID" ];then
   output="$(yad "${yadflags[@]}" --height=0 --form --columns=2 --separator='\n' \
-    --image="$(dirname "$0")/logo-full.png" \
+    --image="$DIRECTORY/logo-full.png" \
     --text=$'<big><b>Welcome to Windows on Raspberry!</b></big>\nThis wizard will help you easily install the full desktop version of Windows on your Raspberry Pi computer.' \
     --field="Install":CB "Windows 11!Windows 10!Custom" \
     --field="on a":CB "Pi4/Pi400!Pi3/Pi2_v1.2/CM3" \
@@ -173,7 +177,7 @@ dtoverlay=miniuart-bt"
   
 fi
 
-CONFIG_TXT="$(yad "${yadflags[@]}" --width=530 --height=420 --image="$(dirname "$0")/logo-full.png" \
+CONFIG_TXT="$(yad "${yadflags[@]}" --width=530 --height=420 --image="$DIRECTORY/logo-full.png" \
   --text="$window_text" --separator='\n' --form \
   "${existing_img_chk[@]}" \
   --field='Edit <b>config.txt</b> (for overclocking):':TXT "$CONFIG_TXT" \
@@ -205,7 +209,7 @@ echo -e "CONFIG_TXT: ⤵\n$(echo "$CONFIG_TXT" | sed 's/^/  > /g')\nCONFIG_TXT: 
 }
 echo "Launching install-wor.sh in a separate terminal"
 
-"$(dirname "$0")/terminal-run" "trap 'sleep infinity' EXIT
+"$DIRECTORY/terminal-run" "trap 'sleep infinity' EXIT
 set -a
 DL_DIR="\""$DL_DIR"\""
 UUID="\""$UUID"\""

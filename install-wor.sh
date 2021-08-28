@@ -13,16 +13,35 @@ echo_white() {
   echo -e "\e[97m${1}\e[39m"
 }
 
-#requirements:
-#destination drive: 32GB
-#installation media drive: 8GB
-
+#Determine the directory to download windows component files to
 [ -z "$DL_DIR" ] && DL_DIR="$HOME/wor-flasher-files"
-mkdir -p "$DL_DIR"
-cd "$DL_DIR"
 
+#Determine the directory that contains this script
+[ -z "$DIRECTORY" ] && DIRECTORY="$(readlink -f "$(dirname "$0")")"
 
+#Determine what /dev/ block-device is the system's rootfs device. This drive is exempted from the list of available flashing options.
 ROOT_DEV="/dev/$(lsblk -no pkname "$(findmnt -n -o SOURCE /)")"
+
+#check for updates and auto-update if the no-update files does not exist
+if [ -e "$DIRECTORY" ] && [ ! -f "${DIRECTORY}/no-update" ];then
+  prepwd="$(pwd)"
+  cd "$DIRECTORY"
+  localhash="$(git rev-parse HEAD)"
+  latesthash="$(git ls-remote https://github.com/Botspot/wor-flasher HEAD | awk '{print $1}')"
+  
+  if [ "$localhash" != "$latesthash" ] && [ ! -z "$latesthash" ] && [ ! -z "$localhash" ];then
+    echo_white "Auto-updating wor-flasher for the latest features and improvements..."
+    echo_white "To disable this next time, create a file at ${DIRECTORY}/no-update"
+    sleep 1
+    git pull
+    
+    echo_white "git pull finished. Reloading script..."
+    #run updated script in background
+    ( "$0" "$@" )
+    exit $?
+  fi
+  cd "$prepwd"
+fi
 
 download_from_gdrive() { #Input: file UUID and filename
   [ -z "$1" ] && error "download_from_gdrive(): requires a Google Drive file UUID!\nFile UUID is the end of a sharable link: https://drive.google.com/uc?export=download&id=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
@@ -108,9 +127,9 @@ list_langs() { #input: build id Output: colon-separated list of langs and their 
   wget -qO- "https://api.uupdump.net/listlangs.php?id=$1" | sed 's/.*langFancyNames":{//g' | sed 's/},"updateInfo":.*//g' | tr '{,[' '\n' | tr -d '"' | sort
 }
 
-get_os_name() {
+get_os_name() { #input: build id Output: human-readable name of operating system
   [ -z "$1" ] && error "get_os_name(): requires an argument for windows update ID. Example ID: db8ec987-d136-4421-afb8-2ef109396b00"
-  local wget_out="$(wget -qO- https://api.uupdump.net/listlangs.php?id=db8ec987-d136-4421-afb8-2ef109396b00 | sed 's/.*"updateInfo"://g' | tr '{,[' '\n' | tr -d '"}]')"
+  local wget_out="$(wget -qO- "https://api.uupdump.net/listlangs.php?id=${1}" | sed 's/.*"updateInfo"://g' | tr '{,[' '\n' | tr -d '"}]')"
   [ -z "$wget_out" ] && error "get_os_name(): failed to retrieve data for $1"
   
   #example value: 'Windows 11'
@@ -121,6 +140,14 @@ get_os_name() {
 }
 
 [ "$1" == 'source' ] && return 0
+#past this point, this script is being run, not sourced.
+
+#Ensure this script's parent directory is valid
+[ ! -e "$DIRECTORY" ] && error "install-wor.sh: Failed to determine the directory that contains this script. Try running this script with full paths."
+
+#Create folder to download everything to
+mkdir -p "$DL_DIR"
+cd "$DL_DIR"
 
 #unless specified otherwise, run this script in cli mode
 [ -z "$RUN_MODE" ] && RUN_MODE=cli #RUN_MODE=gui
