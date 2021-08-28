@@ -1,0 +1,421 @@
+#!/bin/bash
+
+#Written by Botspot
+#This script is an automation for the tutorial that can be found here: https://worproject.ml/guides/how-to-install/from-other-os
+
+error() { #Input: error message
+  echo -e "\\e[91m$1\\e[39m" 1>&2
+  [ "$RUN_MODE" == gui ] && zenity --error --title "$(basename "$0")" --width 360 --text "$(echo -e "An error has occurred:\n$1\nExiting now." | sed 's/\x1b\[[0-9;]*m//g' | sed 's/\x1b\[[0-9;]*//g' | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")"
+  exit 1
+}
+
+echo_white() {
+  echo -e "\e[97m${1}\e[39m"
+}
+
+#requirements:
+#destination drive: 32GB
+#installation media drive: 8GB
+
+[ -z "$DL_DIR" ] && DL_DIR="$HOME/wor-flasher-files"
+mkdir -p "$DL_DIR"
+cd "$DL_DIR"
+
+
+ROOT_DEV="/dev/$(lsblk -no pkname "$(findmnt -n -o SOURCE /)")"
+
+download_from_gdrive() { #Input: file UUID and filename
+  [ -z "$1" ] && error "download_from_gdrive(): requires a Google Drive file UUID!\nFile UUID is the end of a sharable link: https://drive.google.com/uc?export=download&id=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  [ -z "$2" ] && error "download_from_gdrive(): requires specifying a filename to save to."
+  
+  local FILEUUID="$1"
+  local FILENAME="$2"
+  
+  wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id='"$FILEUUID" -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=$FILEUUID" -O "$2" && rm -rf /tmp/cookies.txt
+  
+}
+
+get_partition() { #Input: device & partition number. Output: partition /dev entry
+  [ -z "$1" ] && error "get_partition(): no /dev device specified as"' $1'
+  [ -z "$2" ] && error "get_partition(): no partition number specified as"' $2'
+  [ ! -b "$1" ] && error "get_partition(): $1 is not a valid block device!"
+  
+  #list drive and partitions in $1, filter out the drive, then get the Nth line
+  lsblk -no PATH "$1" | grep -vx "$1" | sed -n "$2"p
+  
+}
+
+get_name() { #get human-readable name of device: manufacturer and model name
+  #Botspot made this by reverse-engineering the usb-devices command and udevadm commands.
+  #input: /dev device
+  [ -z "$1" ] && error "get_name(): requires an argument"
+  [ ! -b "$1" ] && error "get_name(): Specified block device '$1' does not exist!"
+  
+  sys_path="$(find /sys/devices/platform -type d -name "$(basename "$1")")"
+  #sys_path may be: /sys/devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb2/2-2/2-2:1.0/host0/target0:0:0/0:0:0:0/block/sda
+  
+  if [ -z "$sys_path" ];then
+    echo "get_name(): Failed to find a /sys/devices/platform entry for '$1'. Continuing." 1>&2
+    return 1
+  fi
+  
+  #Go up 6 directories:
+  sys_path="$(echo "$sys_path" | tr '/' '\n' | head -n -6 | tr '\n' '/')"
+  #sys_path may be: /sys/devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb2/2-2/
+  
+  product="$(cat "${sys_path}product")"
+  manufacturer="$(cat "${sys_path}manufacturer")"
+  #serial="$(cat "$sys_path"/serial)"
+  
+  if [ "$manufacturer" != "$product" ];then
+    echo "$manufacturer $product"
+  else
+    echo "$manufacturer"
+  fi
+}
+
+get_size_raw() { #Input: device. Output: total size of device in bytes
+  lsblk -b --output SIZE -n -d "$1"
+}
+
+list_devs() { #Output: human-readable, colorized list of valid block devices to write to. Omits /dev/loop* and the root device
+  local IFS=$'\n'
+  for device in $(lsblk -I 8,179 -dno PATH | grep -v loop | grep -vx "$ROOT_DEV") ;do
+    echo -e "\e[1m\e[97m${device}\e[0m - \e[92m$(lsblk -dno SIZE "$device")B\e[0m - \e[36m$(get_name "$device")\e[0m"
+  done
+}
+
+get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2ef109396b00'
+  if [ "$1" == 11 ];then
+    wget -qO- 'https://uupdump.net/fetchupd.php?arch=arm64&ring=wif&build=latest' | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
+  elif [ "$1" == 10 ];then
+    wget -qO- "https://uupdump.net/fetchupd.php?arch=arm64&ring=retail&build=19042.330" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
+  else
+    error "get_uuid(): requires an argument for windows version to fetch: '10', '11'"
+  fi
+}
+
+check_uuid() { #return 0 if input is valid uuid, return 1 otherwise
+  if [[ $1 =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{12}\}?$ ]];then
+    return 0
+  else
+    return 1
+  fi
+}
+
+list_langs() { #input: build id Output: colon-separated list of langs and their labels
+  [ -z "$1" ] && error "list_langs(): requires an argument for windows update ID. Example ID: db8ec987-d136-4421-afb8-2ef109396b00"
+  wget -qO- "https://api.uupdump.net/listlangs.php?id=$1" | sed 's/.*langFancyNames":{//g' | sed 's/},"updateInfo":.*//g' | tr '{,[' '\n' | tr -d '"' | sort
+}
+
+get_os_name() {
+  [ -z "$1" ] && error "get_os_name(): requires an argument for windows update ID. Example ID: db8ec987-d136-4421-afb8-2ef109396b00"
+  local wget_out="$(wget -qO- https://api.uupdump.net/listlangs.php?id=db8ec987-d136-4421-afb8-2ef109396b00 | sed 's/.*"updateInfo"://g' | tr '{,[' '\n' | tr -d '"}]')"
+  [ -z "$wget_out" ] && error "get_os_name(): failed to retrieve data for $1"
+  
+  #example value: 'Windows 11'
+  local version="$(echo "$wget_out" | grep '^title:' | sed 's/.*for //g' | sed 's/ (.*//g')"
+  local build="$(echo "$wget_out" | grep '^build:' | awk -F: '{print $2}')"
+  
+  echo -e "$version build $build"
+}
+
+[ "$1" == 'source' ] && return 0
+
+#unless specified otherwise, run this script in cli mode
+[ -z "$RUN_MODE" ] && RUN_MODE=cli #RUN_MODE=gui
+
+{ #choose windows version
+if [ -z "$UUID" ];then
+  while true; do
+    echo -ne "Choose Windows version:
+\e[97m\e[1m1\e[0m) Windows 11
+\e[97m\e[1m2\e[0m) Windows 10
+\e[97m\e[1m3\e[0m) Custom...
+Enter \e[97m\e[1m1\e[0m, \e[97m\e[1m2\e[0m or \e[97m\e[1m3\e[0m: "
+    read REPLY
+    case $REPLY in
+      1)
+        #Windows 11
+        UUID="$(get_uuid 11)"
+        break
+        ;;
+      2)
+        #Windows 10
+        UUID="$(get_uuid 10)"
+        break
+        ;;
+      3)
+        #custom
+        read -p $'\nEnter a Windows build ID below.\nGo to https://uupdump.net to browse windows versions.\nExample ID: db8ec987-d136-4421-afb8-2ef109396b00\nID: ' UUID
+        break
+        ;;
+      *) echo "Invalid option ${REPLY}. Expected '1', '2' or '3'.";;
+    esac
+  done
+  echo
+fi
+
+#check uuid validity
+check_uuid "$UUID" || error "Windows ID "\""$UUID"\"" is invalid.\nExample ID: db8ec987-d136-4421-afb8-2ef109396b00"
+}
+
+{ #choose language
+if [ -z "$WIN_LANG" ];then
+  LANG_LIST="$(list_langs "$UUID" | awk -F: '{print $1}')"
+  echo -ne "$LANG_LIST\nChoose language: "
+  while true; do
+    read WIN_LANG
+    
+    if echo "$LANG_LIST" | grep -qx "$WIN_LANG" ;then
+      #if selected language matches line in language list
+      break
+    else
+      echo -ne "Invalid choice "\""$WIN_LANG"\"". Please try again.\nChoose language: "
+    fi
+    
+  done
+  echo
+else
+  LANG_LIST="$(list_langs "$UUID" | awk -F: '{print $1}')"
+  if ! echo "$LANG_LIST" | grep -qx "$WIN_LANG" ;then
+    error "Invalid WIN_LANG value "\""$WIN_LANG"\"".\nAvailable languages for this Windows build:\n$LANG_LIST"
+  fi
+fi
+}
+
+{ #choose destination RPi model
+if [ -z "$RPI_MODEL" ];then
+  while true; do
+    echo -ne "Choose Raspberry Pi model to deploy Windows on:
+\e[97m\e[1m1\e[0m) Raspberry Pi 4 / 400
+\e[97m\e[1m2\e[0m) Raspberry Pi 2 rev 1.2 / 3 / CM3
+Enter \e[97m\e[1m1\e[0m or \e[97m\e[1m2\e[0m: "
+    read REPLY
+    case $REPLY in
+      1)
+        RPI_MODEL=4
+        break
+        ;;
+      2)
+        RPI_MODEL=3
+        break
+        ;;
+      *) echo "Invalid option ${REPLY}. Expected '1' or '2'.";;
+    esac
+  done
+  echo
+elif [ "$RPI_MODEL" != 3 ] && [ "$RPI_MODEL" != 4 ];then
+  error "Unknown value for RPI_MODEL. Expected '3' or '4'."
+fi
+}
+
+{ #choose output device
+if [ -z "$DEVICE" ];then
+  while true;do
+    echo "Available devices:"
+    list_devs
+    read -p "Choose a device to flash the Windows setup files to: " DEVICE
+    if [ -b "$DEVICE" ];then
+      break #exit loop
+    else
+      echo "Device $DEVICE is not a valid block device! Available devices:\n$(list_devs)"
+    fi
+  done
+  echo
+elif [ ! -b "$DEVICE" ];then
+  error "Invalid value for DEVICE: block device $DEVICE does not exist. Available devices:\n$(list_devs)"
+fi
+}
+
+{ #CAN_INSTALL_ON_SAME_DRIVE
+if [ -z "$CAN_INSTALL_ON_SAME_DRIVE" ];then
+  while true; do
+    echo -ne "\e[97m\e[1m1\e[0m) Create an installation drive (minimum 25 GB) capable of installing Windows to itself
+\e[97m\e[1m2\e[0m) Create a recovery drive (minimum 7 GB) to install Windows on other >16 GB drives
+Choose the installation mode (\e[97m\e[1m1\e[0m or \e[97m\e[1m2\e[0m): "
+    read REPLY
+    case $REPLY in
+      1)
+        CAN_INSTALL_ON_SAME_DRIVE=1
+        break
+        ;;
+      2)
+        CAN_INSTALL_ON_SAME_DRIVE=0
+        break
+        ;;
+      *) echo "Invalid option ${REPLY}. Expected '1', '2' or '3'.";;
+    esac
+  done
+  echo
+elif [ "$CAN_INSTALL_ON_SAME_DRIVE" != 0 ] && [ "$CAN_INSTALL_ON_SAME_DRIVE" != 1 ];then
+  error "Unknown value for CAN_INSTALL_ON_SAME_DRIVE. Expected '1' or '2'."
+fi
+
+if [ "$CAN_INSTALL_ON_SAME_DRIVE" == 1 ];then
+  #drive must be 25gb
+  if [ "$(get_size_raw "$DEVICE")" -lt $((25*1024*1024*1024)) ];then
+    error "Drive $DEVICE is smaller than 25GB and cannot be used for self-installation."
+  fi
+elif [ "$CAN_INSTALL_ON_SAME_DRIVE" == 0 ];then
+  #drive must be 7gb
+  if [ "$(get_size_raw "$DEVICE")" -lt $((7*1024*1024*1024)) ];then
+    error "Drive $DEVICE is smaller than 7GB and cannot be used."
+  fi
+fi
+}
+
+echo "Input configuration:
+DL_DIR: $DL_DIR
+RUN_MODE: $RUN_MODE
+RPI_MODEL: $RPI_MODEL
+DEVICE: $DEVICE
+CAN_INSTALL_ON_SAME_DRIVE: $CAN_INSTALL_ON_SAME_DRIVE
+UUID: $UUID
+WIN_LANG: $WIN_LANG
+CONFIG_TXT: ⤵
+$(echo "$CONFIG_TXT" | grep . | sed 's/^/  > /g')
+CONFIG_TXT: ⤴
+"
+
+echo_white "Installing necessary packages"
+sudo apt install -yf aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget || error "apt failed to install packages: aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils"
+
+PE_INSTALLER_SHA256=$(wget -qO- https://worproject.ml/dldserv/worpe/gethashlatest.php | cut -d ':' -f2)
+[ -z "$PE_INSTALLER_SHA256" ] && error "Failed to determine a hashsum for WoR PE-based installer.\nURL: https://worproject.ml/dldserv/worpe/gethashlatest.php"
+if [ ! -f "$(pwd)/WoR-PE_Package.zip" ] || ! echo "$PE_INSTALLER_SHA256 $(pwd)/WoR-PE_Package.zip" | sha256sum -c ;then
+  echo_white "Downloading WoR PE-based installer from Google Drive"
+  #from: https://worproject.ml/downloads#windows-on-raspberry-pe-based-installer
+  URL='https://worproject.ml/dldserv/worpe/downloadlatest.php'
+  #determine Google Drive FILEUUID from given redirect URL
+  FILEUUID="$(wget --spider --content-disposition --trust-server-names -O /dev/null "$URL" 2>&1 | grep Location | sed 's/^Location: //g' | sed 's/ \[following\]$//g' | grep 'drive\.google\.com' | sed 's+.*/++g' | sed 's/.*&id=//g')"
+  download_from_gdrive "$FILEUUID" "$(pwd)/WoR-PE_Package.zip" || error "Failed to download Windows on Raspberry PE-based installer"
+
+  echo "$PE_INSTALLER_SHA256 $(pwd)/WoR-PE_Package.zip" | sha256sum -c || error "PE-based installer integrity check failed"
+
+  rm -rf peinstaller
+  unzip -q "$(pwd)/WoR-PE_Package.zip" -d peinstaller || error "The unzip command failed to extract $(pwd)/WoR-PE_Package.zip"
+  echo
+fi
+
+if [ ! -d $(pwd)/driverpackage ];then
+  echo_white "Downloading driver package"
+  #from: https://github.com/worproject/RPi-Windows-Drivers/releases
+  #example download URL (will be outdated) https://github.com/worproject/RPi-Windows-Drivers/releases/download/v0.11/RPi4_Windows_ARM64_Drivers_v0.11.zip
+  #determine latest release download URL:
+  URL="$(wget -qO- https://api.github.com/repos/worproject/RPi-Windows-Drivers/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_Windows_ARM64_Drivers_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
+  wget -O "$(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" "$URL" || error "Failed to download driver package"
+  unzip -q "$(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" -d driverpackage || error "The unzip command failed to extract $(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
+  echo
+fi
+
+if [ ! -d $(pwd)/uefipackage ];then
+  echo_white "Downloading UEFI package"
+  #from: https://github.com/pftf/RPi4/releases
+  #example download URL (will be outdated) https://github.com/pftf/RPi4/releases/download/v1.29/RPi4_UEFI_Firmware_v1.29.zip
+  #determine latest release download URL:
+  URL="$(wget -qO- https://api.github.com/repos/pftf/RPi${RPI_MODEL}/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_UEFI_Firmware_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
+  wget -O "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" "$URL" || error "Failed to download UEFI package"
+  unzip -q "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" -d uefipackage || error "The unzip command failed to extract $(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
+  echo
+fi
+
+#get UUPDump package
+#get other versions from: https://uupdump.net/
+if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
+  echo_white "Downloading uupdump script to legally generate Windows ISO"
+  
+  if [ -z "$UUID" ];then
+    echo_white "Determining latest Windows build UUID"
+    if [ "$WINDOWS_VER" == 11 ];then
+      UUID="$(wget -qO- 'https://uupdump.net/fetchupd.php?arch=arm64&ring=wif&build=latest' | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1)"
+    elif [ "$WINDOWS_VER" == 10 ];then
+      UUID="$(wget -qO- "https://uupdump.net/fetchupd.php?arch=arm64&ring=retail&build=19042.330" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1)"
+    fi
+    [ -z "$UUID" ] && error "Failed to determine Windows build ID from parsing uupdump.net HTML!"
+  fi
+  
+  rm -rf "$(pwd)/UUPDump_"*.ISO "$(pwd)/uupdump"
+  wget -O "$(pwd)/uupdump.zip" "https://uupdump.net/get.php?id=${UUID}&pack=${WIN_LANG}&edition=professional&autodl=2" || error "Failed to download uupdump.zip"
+  unzip -q "$(pwd)/uupdump.zip" -d "$(pwd)/uupdump" || error "Failed to extract $(pwd)/uupdump.zip"
+  rm "$(pwd)/uupdump.zip"
+  chmod +x "$(pwd)/uupdump/uup_download_linux.sh" || error "Failed to mark $(pwd)/UUPDump_22000/uup_download_linux.sh script as executable!"
+  
+  echo_white "Generating Windows image with uupdump"
+  #run uup_download_linux.sh
+  prepwd="$(pwd)"
+  cd "$(pwd)/uupdump"
+  nice "$(pwd)/uup_download_linux.sh" || error "Failed to generate a Windows ISO! (uup_download_linux.sh script indicated a failure)"
+  cd "$prepwd"
+else
+  echo_white "Reusing same Windows image that was generated in the past"
+fi
+
+if [ ! -b "$DEVICE" ];then
+  error "Device $DEVICE is not a valid block device! Available devices:\n$(list_devs)"
+fi
+
+echo_white "Formatting ${DEVICE}"
+sudo umount -q "$DEVICE"?
+echo_white "Creating partition table"
+sudo parted -s "$DEVICE" mklabel gpt || error "Failed to make GPT partition table on ${DEVICE}!"
+sync
+echo_white "Generating partitions"
+sudo parted -s "$DEVICE" mkpart primary 1MB 1000MB || error "Failed to make first primary partition on ${DEVICE}!"
+sudo parted -s "$DEVICE" set 1 msftdata on || error "Failed to enable msftdata flag on $DEVICE partition 1"
+sync
+if [ $CAN_INSTALL_ON_SAME_DRIVE == 1 ];then
+  sudo parted -s "$DEVICE" mkpart primary 1000MB 19000MB || error "Failed to make second primary partition on ${DEVICE}!"
+else
+  sudo parted -s "$DEVICE" mkpart primary 1000MB 6000MB || error "Failed to make second primary partition on ${DEVICE}!"
+fi
+sudo parted -s "$DEVICE" set 2 msftdata on || error "Failed to enable msftdata flag on $DEVICE partition 2"
+sync
+echo_white "Generating filesystems"
+sudo mkfs.fat -F 32 "$(get_partition "$DEVICE" 1)" || error "Failed to create FAT partition on $(get_partition "$DEVICE" 1) (partition 1 of ${DEVICE})"
+sudo mkfs.exfat "$(get_partition "$DEVICE" 2)" || error "Failed to create EXFAT partition on $(get_partition "$DEVICE" 2) (partition 2 of ${DEVICE})"
+
+mntpnt="/media/$USER/WOR-installer"
+echo_white "Mounting ${DEVICE} device to $mntpnt"
+sudo mkdir -p "$mntpnt"/bootpart || error "Failed to create mountpoint: $mntpnt/bootpart"
+sudo mkdir -p "$mntpnt"/winpart || error "Failed to create mountpoint: $mntpnt/winpart"
+sudo mount "$(get_partition "$DEVICE" 1)" "$mntpnt"/bootpart || error "Failed to mount $(get_partition "$DEVICE" 1) to $mntpnt/bootpart"
+sudo mount "$(get_partition "$DEVICE" 2)" "$mntpnt"/winpart || error "Failed to mount $(get_partition "$DEVICE" 2) to $mntpnt/winpart"
+
+echo_white "Mounting image"
+mkdir -p "$(pwd)/isomount" || error "Failed to make $(pwd)/isomount folder"
+sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount" || error "Failed to mount ISO file ($(echo "$(pwd)/uupdump"/*.ISO)) to $(pwd)/isomount"
+
+echo_white "Copying files from image to device"
+sudo cp -r $(pwd)/isomount/boot "$mntpnt"/bootpart || error "Failed to copy $(pwd)/isomount/boot to $mntpnt/bootpart"
+sudo cp -r $(pwd)/isomount/efi "$mntpnt"/bootpart || error "Failed to copy $(pwd)/isomount/efi to $mntpnt/bootpart"
+sudo mkdir -p "$mntpnt"/bootpart/sources || error "Failed to make folder: $mntpnt/bootpart/sources"
+sudo cp $(pwd)/isomount/sources/boot.wim "$mntpnt"/bootpart/sources || error "Failed to make folder: $(pwd)/isomount/sources/boot.wim to $mntpnt/bootpart/sources"
+sudo cp $(pwd)/isomount/sources/install.wim "$mntpnt"/winpart || error "Failed to make folder: $(pwd)/isomount/sources/install.wim to $mntpnt/winpart"
+
+echo_white "Unmounting image"
+sudo umount "$(pwd)/isomount" || echo_white "Warning: failed to unmount $(pwd)/isomount" #failure is non-fatal
+
+echo_white "Copying PE package to image"
+sudo cp -r peinstaller/efi "$mntpnt"/bootpart
+sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add peinstaller/winpe/2 /" || error "The wimupdate command failed to add peinstaller to boot.wim"
+
+echo_white "Copying driver package to image"
+sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add driverpackage /drivers" || error "The wimupdate command failed to add driverpackage to boot.wim"
+
+echo_white "Copying UEFI package to image"
+sudo cp uefipackage/* "$mntpnt"/bootpart 2>/dev/null # the -r flag ommitted on purpose
+
+if [ $RPI_MODEL == 3 ];then
+  sudo dd if=peinstaller/pi3/gptpatch.img of="$DEVICE" conv=fsync
+fi
+
+if [ ! -z "$CONFIG_TXT" ];then
+  echo_white "Customizing the drive's config.txt according to the CONFIG_TXT variable"
+  echo "$CONFIG_TXT" | sudo tee "$mntpnt"/bootpart/config.txt >/dev/null
+fi
+
+echo_white "Unmounting drive ${drive}"
+sudo umount -q "$DEVICE"? || echo_white "Warning: the umount command failed to unmount all partitions within $DEVICE"
+sudo rm -rf "$mntpnt" || echo_white "Warning: Failed to remove the mountpoint folder: $mntpnt"
+echo_white "$(basename "$0") script has completed."
