@@ -18,10 +18,6 @@ Now, using the new WoR-flasher, it's a *piece of cake*.
 git clone https://github.com/Botspot/wor-flasher
 ```
 This will create a new folder in your home directory named `wor-flasher`.
-### To run WoR-flasher using the terminal interface
-```
-~/wor-flasher/install-wor.sh
-```
 ### To run WoR-flasher using the graphical interface
 ```
 ~/wor-flasher/install-wor-gui.sh
@@ -41,7 +37,59 @@ This will create a new folder in your home directory named `wor-flasher`.
 ![terminal3](https://user-images.githubusercontent.com/54716352/131228381-11dc3a4e-96da-40ec-8f46-8b28ade5ee52.png)
 - If all goes well, the terminal will close and you will be told what to do next.  
 ![next steps](https://user-images.githubusercontent.com/54716352/131228409-f84ede9b-a1fc-43f9-a79c-5b1853513960.png)
+### To run WoR-flasher using the terminal interface
+```
+~/wor-flasher/install-wor.sh
+```
+<details><summary>Example terminal walkthrough (click to expand)</summary>
+$ ~/wor-flasher/install-wor.sh
+Choose Windows version:
+1) Windows 11
+2) Windows 10
+3) Custom...
+Enter 1, 2 or 3: 1
 
+Choose language: en-us
 
+Choose Raspberry Pi model to deploy Windows on:
+1) Raspberry Pi 4 / 400
+2) Raspberry Pi 2 rev 1.2 / 3 / CM3
+Enter 1 or 2: 1
+
+Available devices:
+/dev/sdb - 59.5GB - USB Storage
+Choose a device to flash the Windows setup files to: /dev/sdb
+
+1) Create an installation drive (minimum 25 GB) capable of installing Windows to itself
+2) Create a recovery drive (minimum 7 GB) to install Windows on other >16 GB drives
+Choose the installation mode (1 or 2): 1
+
+Input configuration:
+DL_DIR: /home/pi/wor-flasher-files
+RUN_MODE: cli
+RPI_MODEL: 4
+DEVICE: /dev/sdb
+CAN_INSTALL_ON_SAME_DRIVE: 1
+UUID: 6f7de912-4143-431b-b605-924c22ab9b1f
+WIN_LANG: en-us
+
+Formatting /dev/sdb
+Generating partitions
+Generating filesystems
+# script output continues... It generates a Windows image legally, downloads all necessary drivers, the BIOS, the bootloader, and the modified kernel. Once done it ejects the drive.
+</details>
+This script is actually what does the flashing: The gui script is just a front-end that launches dialog windows and finally runs install-wor.sh in a terminal.
+
+### Environment variables
+The `install-wor.sh` script is designed to be used within other, larger bash scripts. For automation and customization, `install-wor.sh` will detect and obey certain environment variables:
+
+- `DL_DIR`: Set this variable to change the default download location. By default, it's `~/wor-flasher-files`.
+- `UUID`: Set this variable to choose an exact Windows update ID. Example value: "`db8ec987-d136-4421-afb8-2ef109396b00`". When this variable is set, `install-wor.sh` will not ask the user which Windows version to use.
+- `WIN_LANG`: Set this variable to choose a language for the Windows image. Example value: "`en-us`". When this variable is set, `install-wor.sh` will not ask the user which language to use.
+- `RPi_MODEL`: Set this variable to choose Raspberry Pi model. Allowed values: "`3`", "`4`". When this variable is set, `install-wor.sh` will not ask the user which Raspberry Pi model to use.
+- `DEVICE`: Set this variable to the device you want to flash. Example value: "`/dev/sda`" When this variable is set, `install-wor.sh` will not ask the user which device to use.
+- `CAN_INSTALL_ON_SAME_DRIVE`: Set this variable to "`1`" if the device is larger than 25GB and you wish to install Windows on itself. Otherwise, set it to "`0`".
+- `CONFIG_TXT`: Set this variable to customize the `/boot/config.txt` of the resulting drive. This is commonly used for overclocking or to change HDMI settings. [This is the default value.](https://github.com/pftf/RPi4/blob/master/config.txt)
+- `RUN_MODE`: Set this to "`gui`" if you want `install-wor.sh` to display graphical error messages.
 
 
