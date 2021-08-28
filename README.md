@@ -8,7 +8,7 @@ Now, using the new WoR-flasher, it's a *piece of cake*.
 ## Useful information
 - This tool is **100% legal**. All propriatary Windows components are downloaded straight from Microsoft's update servers using [uupdump](https://uupdump.net).
 - Disclaimer: This tool has only been tested to run correctly on Raspberry Pi OS 32-bit. Botspot (the developer of this tool) cannot be held responsible for data loss!
-- Need help using the WoR-flasher tool? You can open an issue or ask for help in [the Botspot Software discord server](https://discord.gg/RXSTvaUvuu)
+- Need help using the WoR-flasher tool? You can [open an issue](https://github.com/Botspot/wor-flasher/issues/new/choose) or ask for help in [the Botspot Software discord server](https://discord.gg/RXSTvaUvuu)
 - Need help using Windows on Raspberry (The operating system)? Contact the WoR developers [through email](https://worproject.ml/contact) or [join their Discord server](https://discord.gg/worofficial).
 - By default, WoR will limit your usable RAM to 3GB due to a complication in the Pi4's CPU design. There is a workaround, but it's not the default. [Click here for details](https://worproject.ml/faq#only-3-gb-of-ram-are-available-how-can-i-fix-this)
 
@@ -27,5 +27,4 @@ This will create a new folder in your home directory named `wor-flasher`.
 ```
 ~/wor-flasher/install-wor-gui.sh
 ```
-
 
