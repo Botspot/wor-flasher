@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #Written by Botspot
-#This script is an automation for the tutorial that can be found here: https://worproject.ml/guides/how-to-install/from-other-os
+#This script is a GUI front-end for the install-wor.sh script
 
 error() { #Input: error message
   echo -e "\\e[91m$1\\e[39m"
@@ -26,6 +26,9 @@ if [ ! -f "$cli_script" ];then
 fi
 #source the script to acquire necessary functions
 source "$cli_script" source #by sourcing, this script checks for and applies updates.
+
+#install dependencies
+install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget'
 
 #this array stores flags that are used in all yad windows - saves on the typing and makes it easy to change an attribute on all dialogs from one place.
 yadflags=(--center --width=310 --height=250 --window-icon="$DIRECTORY/logo.png" --title="Windows on Raspberry")

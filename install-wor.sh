@@ -37,11 +37,33 @@ if [ -e "$DIRECTORY" ] && [ ! -f "${DIRECTORY}/no-update" ];then
     
     echo_white "git pull finished. Reloading script..."
     #run updated script in background
-    ( "$0" "$@" )
+    "$0" "$@"
     exit $?
   fi
   cd "$prepwd"
 fi
+
+install_packages() { #input: space-separated list of apt packages to install
+  [ -z "$1" ] && error "install_packages(): requires a list of apt packages to install"
+  dependencies="$1"
+  PREIFS="$IFS"
+  local IFS=' '
+  for package in $dependencies ;do
+    if ! dpkg -l "$package" &>/dev/null ;then
+      #if the currently-checked package is not installed, add it to the list of packages to install
+      if [ -z "$install_list" ];then
+        install_list="$package"
+      else
+        install_list="$install_list $package"
+      fi
+    fi
+  done
+  IFS="$PREIFS"
+  if [ ! -z "$install_list" ];then
+    echo_white "Installing packages: $install_list"
+    sudo apt install -yf $install_list || error "apt failed to install packages: aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils"
+  fi
+}
 
 download_from_gdrive() { #Input: file UUID and filename
   [ -z "$1" ] && error "download_from_gdrive(): requires a Google Drive file UUID!\nFile UUID is the end of a sharable link: https://drive.google.com/uc?export=download&id=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
@@ -144,6 +166,9 @@ get_os_name() { #input: build id Output: human-readable name of operating system
 
 #Ensure this script's parent directory is valid
 [ ! -e "$DIRECTORY" ] && error "install-wor.sh: Failed to determine the directory that contains this script. Try running this script with full paths."
+
+#install dependencies
+install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget'
 
 #Create folder to download everything to
 mkdir -p "$DL_DIR"
@@ -304,9 +329,6 @@ CONFIG_TXT: ⤵
 $(echo "$CONFIG_TXT" | grep . | sed 's/^/  > /g')
 CONFIG_TXT: ⤴
 "
-
-echo_white "Installing necessary packages"
-sudo apt install -yf aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget || error "apt failed to install packages: aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils"
 
 PE_INSTALLER_SHA256=$(wget -qO- https://worproject.ml/dldserv/worpe/gethashlatest.php | cut -d ':' -f2)
 [ -z "$PE_INSTALLER_SHA256" ] && error "Failed to determine a hashsum for WoR PE-based installer.\nURL: https://worproject.ml/dldserv/worpe/gethashlatest.php"
