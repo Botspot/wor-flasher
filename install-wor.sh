@@ -61,7 +61,8 @@ install_packages() { #input: space-separated list of apt packages to install
   IFS="$PREIFS"
   if [ ! -z "$install_list" ];then
     echo_white "Installing packages: $install_list"
-    sudo apt install -yf $install_list || error "apt failed to install packages: aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils"
+    sudo apt update || error "Failed to run 'sudo apt update'! This is not an error in WoR-flasher."
+    sudo apt install -yf $install_list || error "Failed to install dependency packages! This is not an error in WoR-flasher."
   fi
 }
 
