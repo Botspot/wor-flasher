@@ -33,7 +33,7 @@ This will create a new folder in your home directory named `wor-flasher`.
   - If the storage device is smaller than 7GB, it is too small to be usable.
 - Double-check that everything looks correct before clicking the Flash button.  
 ![page4](https://user-images.githubusercontent.com/54716352/131228359-5d322ee6-ecd7-41b9-8220-d18e9f38f232.png)
-- A terminal will launch and run the `install-wor.sh` script:  
+- A terminal will launch and run the `install-wor.sh` script: (Note that now, the script will start downloading Windows piece-by-piece from Microsoft's update servers. A lot of bandwidth will be used at this step to download the ~3GB OS image, so make sure there won't be issues with internet usage. This step will also take up to 30 minutes depending on your internet speed, so just leave it running in the background and go drink some water)  
 ![terminal3](https://user-images.githubusercontent.com/54716352/131228381-11dc3a4e-96da-40ec-8f46-8b28ade5ee52.png)
 - If all goes well, the terminal will close and you will be told what to do next.  
 ![next steps](https://user-images.githubusercontent.com/54716352/131228409-f84ede9b-a1fc-43f9-a79c-5b1853513960.png)
