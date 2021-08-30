@@ -28,8 +28,8 @@ This will create a new folder in your home directory named `wor-flasher`.
 ![page2](https://user-images.githubusercontent.com/54716352/131228261-e7e1a989-4151-4df7-8aa2-eff95704df41.png)
 - Plug in a writable storage device to flash Windows to.  
 ![page3](https://user-images.githubusercontent.com/54716352/131228296-fb61f216-9a12-412a-b7b5-0bcd185891a0.png)
-  - If the storage device is larger than 25GB, it can install Windows on itself.
-  - If the storage device is smaller than 25GB but larger than 7GB, it can only install Windows on other drives. (like a Windows recovery disk)
+  - If the storage device is larger than 25GB, it is capable of installing Windows to itself.
+  - If the storage device is smaller than 25GB but larger than 7GB, it can only install Windows **on other drives**. (like recovery/reset disk)
   - If the storage device is smaller than 7GB, it is too small to be usable.
 - Double-check that everything looks correct before clicking the Flash button.  
 ![page4](https://user-images.githubusercontent.com/54716352/131228359-5d322ee6-ecd7-41b9-8220-d18e9f38f232.png)
