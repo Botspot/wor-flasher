@@ -33,8 +33,9 @@ This will create a new folder in your home directory named `wor-flasher`.
   - If the storage device is smaller than 7GB, it is too small to be usable.
 - Double-check that everything looks correct before clicking the Flash button.  
 ![page4](https://user-images.githubusercontent.com/54716352/131228359-5d322ee6-ecd7-41b9-8220-d18e9f38f232.png)
-- A terminal will launch and run the `install-wor.sh` script: (Note that now, the script will start downloading Windows piece-by-piece from Microsoft's update servers. A lot of bandwidth will be used at this step to download the ~3GB OS image, so make sure there won't be issues with internet usage. This step will also take up to 30 minutes depending on your internet speed, so just leave it running in the background and go drink some water)  
+- A terminal will launch and run the `install-wor.sh` script:  
 ![terminal3](https://user-images.githubusercontent.com/54716352/131228381-11dc3a4e-96da-40ec-8f46-8b28ade5ee52.png)
+Note: this can take a lot of time to download individual files from Microsoft, package them, and generate a Windows image. Fortunately, subsequent runs can skip the lengthy image-generating step if the ISO file exists.  
 - If all goes well, the terminal will close and you will be told what to do next.  
 ![next steps](https://user-images.githubusercontent.com/54716352/131228409-f84ede9b-a1fc-43f9-a79c-5b1853513960.png)
 ### To run WoR-flasher using the terminal interface
@@ -42,6 +43,8 @@ This will create a new folder in your home directory named `wor-flasher`.
 ~/wor-flasher/install-wor.sh
 ```
 <details><summary>Example terminal walkthrough (click to expand)</summary>
+
+```
 $ ~/wor-flasher/install-wor.sh
 Choose Windows version:
 1) Windows 11
@@ -77,6 +80,7 @@ Formatting /dev/sdb
 Generating partitions
 Generating filesystems
 # script output continues... It generates a Windows image legally, downloads all necessary drivers, the BIOS, the bootloader, and the modified kernel. Once done it ejects the drive.
+```
 </details>
 This script is actually what does the flashing: The gui script is just a front-end that launches dialog windows and finally runs install-wor.sh in a terminal.
 
