@@ -23,21 +23,21 @@ This will create a new folder in your home directory named `wor-flasher`.
 ~/wor-flasher/install-wor-gui.sh
 ```
 - Choose a Windows version and choose which Raspberry Pi model will be running it.  
-![page1](https://user-images.githubusercontent.com/54716352/131228226-5d5b8456-b273-48a5-b4c3-5e90790cf21e.png)
+![page1](https://user-images.githubusercontent.com/54716352/131228226-5d5b8456-b273-48a5-b4c3-5e90790cf21e.png)  
 - Choose a language for Windows.  
-![page2](https://user-images.githubusercontent.com/54716352/131228261-e7e1a989-4151-4df7-8aa2-eff95704df41.png)
+![page2](https://user-images.githubusercontent.com/54716352/131228261-e7e1a989-4151-4df7-8aa2-eff95704df41.png)  
 - Plug in a writable storage device to flash Windows to.  
-![page3](https://user-images.githubusercontent.com/54716352/131228296-fb61f216-9a12-412a-b7b5-0bcd185891a0.png)
+![page3](https://user-images.githubusercontent.com/54716352/131228296-fb61f216-9a12-412a-b7b5-0bcd185891a0.png)  
   - If the storage device is larger than 25GB, it is capable of installing Windows to itself.
   - If the storage device is smaller than 25GB but larger than 7GB, it can only install Windows **on other drives**. (like recovery/reset disk)
   - If the storage device is smaller than 7GB, it is too small to be usable.
 - Double-check that everything looks correct before clicking the Flash button.  
-![page4](https://user-images.githubusercontent.com/54716352/131228359-5d322ee6-ecd7-41b9-8220-d18e9f38f232.png)
+![page4](https://user-images.githubusercontent.com/54716352/131228359-5d322ee6-ecd7-41b9-8220-d18e9f38f232.png)  
 - A terminal will launch and run the `install-wor.sh` script:  
-![terminal3](https://user-images.githubusercontent.com/54716352/131228381-11dc3a4e-96da-40ec-8f46-8b28ade5ee52.png)
+![terminal3](https://user-images.githubusercontent.com/54716352/131228381-11dc3a4e-96da-40ec-8f46-8b28ade5ee52.png)  
 Note: this can take a lot of time to download individual files from Microsoft, package them, and generate a Windows image. Fortunately, subsequent runs can skip the lengthy image-generating step if the ISO file exists.  
 - If all goes well, the terminal will close and you will be told what to do next.  
-![next steps](https://user-images.githubusercontent.com/54716352/131228409-f84ede9b-a1fc-43f9-a79c-5b1853513960.png)
+![next steps](https://user-images.githubusercontent.com/54716352/131228409-f84ede9b-a1fc-43f9-a79c-5b1853513960.png)  
 ### To run WoR-flasher using the terminal interface
 ```
 ~/wor-flasher/install-wor.sh
@@ -84,7 +84,7 @@ Generating filesystems
 </details>
 This script is actually what does the flashing: The gui script is just a front-end that launches dialog windows and finally runs install-wor.sh in a terminal.
 
-### Environment variables
+### Environment variable options
 The `install-wor.sh` script is designed to be used within other, larger bash scripts. For automation and customization, `install-wor.sh` will detect and obey certain environment variables:
 
 - `DL_DIR`: Set this variable to change the default download location. By default, it's `~/wor-flasher-files`.
@@ -96,4 +96,75 @@ The `install-wor.sh` script is designed to be used within other, larger bash scr
 - `CONFIG_TXT`: Set this variable to customize the `/boot/config.txt` of the resulting drive. This is commonly used for overclocking or to change HDMI settings. [This is the default value.](https://github.com/pftf/RPi4/blob/master/config.txt)
 - `RUN_MODE`: Set this to "`gui`" if you want `install-wor.sh` to display graphical error messages.
 
+### Functions
+The `install-wor.sh` script is designed to be used within other, larger bash scripts. For improved integration, `install-wor.sh` is equipped with a variety of useful functions that frontend scripts like `install-wor-gui.sh` can use.  
+**To source the script** so the functions are available:
+```
+source ~/wor-flasher/install-wor.sh source
+```
+Question: why does that comman say "`source`" twice? Answer: The first "`source`" is a command, and the second "`source`" is a command-line flag that is passed to the script to let it know you are sourcing it.
+Once the script is sourced, these new commands (also known as functions) become available:  
+- `error` - a simple function that Botspot uses in bash scripts to warn the user that something failed and to exit the script with a failure code. (1)  
+Input: string containing the error message  
+Usage:  
+```
+command-that-downloads-windows || error "Windows failed to download! Check your internet connection and try again."
+```
+- `echo_white` - a simple frontend to the `echo` command that displays your desired message as white text instead of the usual light-grey.  
+Input: string containing message  
+Usage:  
+```
+echo_white "Now, downloading windows... please wait"
+```
+- `install_packages` - Checks for and installs a quoted list of packages.  
+Input: string containing a space-separated list of packages  
+Usage:  
+```
+install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget'
+```
+- `download-from-gdrive` - Downloads a publically shared large-file from Google Drive. [Here's the tutorial](https://medium.com/@acpanjan/download-google-drive-files-using-wget-3c2c025a8b99) I adapted it from.  
+Inputs: File ID, output filename  
+Usage:  
+```
+download_from_gdrive 1WHyHFYjM4WPAAGH2PICGEhT4R5TlxlJC WoR-PE_Package.zip
+```
+- `get_partition` - A clean, reliable way to determine the block-device of a partition.  
+Input: block device of drive, partition number  
+Usage:  
+```
+get_partition /dev/sda 2
+#Assuming partition 2 exists, the above command returns "/dev/sda2"
 
+get_partition /dev/mmcblk0 2
+#Assuming partition 2 exists, the above command returns "/dev/mmcblk0p2"
+```
+- `get_name` - Determine a human-readable name for the given storage drive.  
+Input: block device of drive  
+Usage:  
+```
+get_name /dev/sda
+```
+- `get_size_raw` - Determines the size of a drive in bytes.  
+Input: block device of drive  
+Usage:  
+```
+get_size_raw /dev/sda
+```
+- `list_devs` - list available storage drives in a human-readable, colored format.  
+Usage:  
+```
+list_devs
+```
+- `check-uuid` - Determine if the given UUID is a valid format. (Windows update IDs are in a UUID format)  
+Input: UUID to check  
+Usage:  
+```
+check_uuid db8ec987-d136-4421-afb8-2ef109396b00
+#this command will return an exit code of zero if valid, otherwise it will return en exit code of 1
+```
+- `get_os_name` - Get human-readable name of operating system.  
+Input: valid Windows update ID  
+Usage:
+```
+get_os_name db8ec987-d136-4421-afb8-2ef109396b00
+```
