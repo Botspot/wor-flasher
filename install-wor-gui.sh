@@ -19,6 +19,8 @@ echo "DL_DIR: $DL_DIR"
 [ -z "$DIRECTORY" ] && DIRECTORY="$(readlink -f "$(dirname "$0")")"
 [ ! -e "$DIRECTORY" ] && error "install-wor-gui.sh: Failed to determine the directory that contains this script. Try running this script with full paths."
 
+echo "$DIRECTORY"
+
 #this script and cli-based install-wor.sh should be in same directory.
 cli_script="$DIRECTORY/install-wor.sh"
 if [ ! -f "$cli_script" ];then
@@ -184,7 +186,7 @@ fi
 CONFIG_TXT="$(yad "${yadflags[@]}" --width=530 --height=420 --image="$DIRECTORY/logo-full.png" \
   --text="$window_text" --separator='\n' --form \
   "${existing_img_chk[@]}" \
-  --field='Edit <b>config.txt</b> (for overclocking):':TXT "$CONFIG_TXT" \
+  --field='Edit <b>config.txt</b>:':TXT "$CONFIG_TXT" \
   --field="<b>Warning!</b> All data on the target drive will be deleted!":LBL '' \
   --button='<b>Flash</b>'!!"Warning! All data on the target drive will be deleted! Backup any files before it's too late!":0
 )"
@@ -202,7 +204,7 @@ if [ ! -z "$existing_img_chk" ];then #if user had the option to delete/retain pr
   CONFIG_TXT="$(echo -e "$CONFIG_TXT" | tail -n +2)"
 fi
 
-[ $button != 0 ] && error "User exited when choosing custom windows build ID"
+[ $button != 0 ] && error "User exited when reviewing information and customizing config.txt"
 
 #expand '\n' in yad output
 CONFIG_TXT="$(echo -e "$CONFIG_TXT")"

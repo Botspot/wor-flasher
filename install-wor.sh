@@ -19,10 +19,13 @@ echo_white() {
 #Determine the directory that contains this script
 [ -z "$DIRECTORY" ] && DIRECTORY="$(readlink -f "$(dirname "$0")")"
 
+#clear the variable storing path to this script, if the folder does not contain a file named 'install-wor.sh'
+[ ! -f "${DIRECTORY}/wor-flasher" ] && DIRECTORY=''
+
 #Determine what /dev/ block-device is the system's rootfs device. This drive is exempted from the list of available flashing options.
 ROOT_DEV="/dev/$(lsblk -no pkname "$(findmnt -n -o SOURCE /)")"
 
-#check for updates and auto-update if the no-update files does not exist
+{ #check for updates and auto-update if the no-update files does not exist
 if [ -e "$DIRECTORY" ] && [ ! -f "${DIRECTORY}/no-update" ];then
   prepwd="$(pwd)"
   cd "$DIRECTORY"
@@ -36,12 +39,14 @@ if [ -e "$DIRECTORY" ] && [ ! -f "${DIRECTORY}/no-update" ];then
     git pull
     
     echo_white "git pull finished. Reloading script..."
+    set -a #export all variables so the script can see them
     #run updated script in background
     "$0" "$@"
     exit $?
   fi
   cd "$prepwd"
 fi
+}
 
 install_packages() { #input: space-separated list of apt packages to install
   [ -z "$1" ] && error "install_packages(): requires a list of apt packages to install"
@@ -167,6 +172,10 @@ get_os_name() { #input: build id Output: human-readable name of operating system
 
 #Ensure this script's parent directory is valid
 [ ! -e "$DIRECTORY" ] && error "install-wor.sh: Failed to determine the directory that contains this script. Try running this script with full paths."
+
+LANG=C
+LC_ALL=C
+LANGUAGE=C
 
 #install dependencies
 install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget'
@@ -297,12 +306,12 @@ Choose the installation mode (\e[97m\e[1m1\e[0m or \e[97m\e[1m2\e[0m): "
         CAN_INSTALL_ON_SAME_DRIVE=0
         break
         ;;
-      *) echo "Invalid option ${REPLY}. Expected '1', '2' or '3'.";;
+      *) echo "Invalid option ${REPLY}. Expected '1' or '2'.";;
     esac
   done
   echo
 elif [ "$CAN_INSTALL_ON_SAME_DRIVE" != 0 ] && [ "$CAN_INSTALL_ON_SAME_DRIVE" != 1 ];then
-  error "Unknown value for CAN_INSTALL_ON_SAME_DRIVE. Expected '1' or '2'."
+  error "Unknown value for CAN_INSTALL_ON_SAME_DRIVE. Expected '0' or '1'."
 fi
 
 if [ "$CAN_INSTALL_ON_SAME_DRIVE" == 1 ];then
@@ -403,6 +412,11 @@ fi
 
 if [ ! -b "$DEVICE" ];then
   error "Device $DEVICE is not a valid block device! Available devices:\n$(list_devs)"
+fi
+
+#set to true for a dry run
+if false;then
+  exit 0
 fi
 
 echo_white "Formatting ${DEVICE}"
