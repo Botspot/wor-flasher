@@ -19,7 +19,7 @@ echo "DL_DIR: $DL_DIR"
 [ -z "$DIRECTORY" ] && DIRECTORY="$(readlink -f "$(dirname "$0")")"
 [ ! -e "$DIRECTORY" ] && error "install-wor-gui.sh: Failed to determine the directory that contains this script. Try running this script with full paths."
 
-echo "$DIRECTORY"
+echo "DIRECTORY: $DIRECTORY"
 
 #this script and cli-based install-wor.sh should be in same directory.
 cli_script="$DIRECTORY/install-wor.sh"
@@ -192,6 +192,8 @@ CONFIG_TXT="$(yad "${yadflags[@]}" --width=530 --height=420 --image="$DIRECTORY/
 )"
 button=$?
 
+[ $button != 0 ] && error "User exited when reviewing information and customizing config.txt"
+
 if [ ! -z "$existing_img_chk" ];then #if user had the option to delete/retain pre-existing img file
   
   #if user checked the box, delete the image
@@ -203,8 +205,6 @@ if [ ! -z "$existing_img_chk" ];then #if user had the option to delete/retain pr
   #remove first line from yad output for CONFIG_TXT
   CONFIG_TXT="$(echo -e "$CONFIG_TXT" | tail -n +2)"
 fi
-
-[ $button != 0 ] && error "User exited when reviewing information and customizing config.txt"
 
 #expand '\n' in yad output
 CONFIG_TXT="$(echo -e "$CONFIG_TXT")"
