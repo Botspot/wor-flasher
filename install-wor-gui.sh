@@ -11,15 +11,14 @@ error() { #Input: error message
 
 RUN_MODE=gui #this variable is detected by install-wor.sh to display gui error messages
 
-#Determine the directory to download windows component files to
-[ -z "$DL_DIR" ] && DL_DIR="$HOME/wor-flasher-files"
-echo "DL_DIR: $DL_DIR"
-
 #Determine the directory that contains this script
 [ -z "$DIRECTORY" ] && DIRECTORY="$(readlink -f "$(dirname "$0")")"
 [ ! -e "$DIRECTORY" ] && error "install-wor-gui.sh: Failed to determine the directory that contains this script. Try running this script with full paths."
-
 echo "DIRECTORY: $DIRECTORY"
+
+#Determine the directory to download windows component files to
+[ -z "$DL_DIR" ] && DL_DIR="$HOME/wor-flasher-files"
+echo "DL_DIR: $DL_DIR"
 
 #this script and cli-based install-wor.sh should be in same directory.
 cli_script="$DIRECTORY/install-wor.sh"
@@ -156,10 +155,10 @@ echo "CAN_INSTALL_ON_SAME_DRIVE: $CAN_INSTALL_ON_SAME_DRIVE"
 
 window_text="<big><b>Installation Overview</b></big>
 
-• Target drive: <b>$DEVICE</b> ($(lsblk -dno SIZE "$DEVICE")B $(get_name "$DEVICE"))
-• $(echo "$CAN_INSTALL_ON_SAME_DRIVE" | sed 's/1/Drive is larger than 25 GB - can install Windows on itself/g' | sed 's/0/Drive is smaller than 25 GB - can install Windows on other drives/g')
-• Hardware type: <b>Raspberry Pi $RPI_MODEL</b>
-• Operating system: <b>$(get_os_name "$UUID" | sed "s/ build / ($WIN_LANG) arm64 build /g")</b>"
+- Target drive: <b>$DEVICE</b> ($(lsblk -dno SIZE "$DEVICE")B $(get_name "$DEVICE"))
+- $(echo "$CAN_INSTALL_ON_SAME_DRIVE" | sed 's/1/Drive is larger than 25 GB - can install Windows on itself/g' | sed 's/0/Drive is smaller than 25 GB - can install Windows on other drives/g')
+- Hardware type: <b>Raspberry Pi $RPI_MODEL</b>
+- Operating system: <b>$(get_os_name "$UUID" | sed "s/ build / ($WIN_LANG) arm64 build /g")</b>"
 
 if [ -f "$DL_DIR/uupdump"/*ARM64*.ISO ];then
   existing_img_chk=(--field="A Windows image already exists. Check this box to rebuild it.":CHK FALSE)
@@ -213,6 +212,11 @@ CONFIG_TXT="$(echo -e "$CONFIG_TXT")"
 echo -e "CONFIG_TXT: ⤵\n$(echo "$CONFIG_TXT" | sed 's/^/  > /g')\nCONFIG_TXT: ⤴"
 
 }
+
+#set to 'true' for a dry run
+if false;then
+  exit 0
+fi
 
 echo "Launching install-wor.sh in a separate terminal"
 
