@@ -178,7 +178,7 @@ LC_ALL=C
 LANGUAGE=C
 
 #install dependencies
-install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget'
+install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget udftools'
 
 #Create folder to download everything to
 mkdir -p "$DL_DIR"
