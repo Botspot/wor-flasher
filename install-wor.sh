@@ -20,7 +20,7 @@ echo_white() {
 [ -z "$DIRECTORY" ] && DIRECTORY="$(readlink -f "$(dirname "$0")")"
 
 #clear the variable storing path to this script, if the folder does not contain a file named 'install-wor.sh'
-[ ! -f "${DIRECTORY}/wor-flasher" ] && DIRECTORY=''
+[ ! -f "${DIRECTORY}/install-wor.sh" ] && DIRECTORY=''
 
 #Determine what /dev/ block-device is the system's rootfs device. This drive is exempted from the list of available flashing options.
 ROOT_DEV="/dev/$(lsblk -no pkname "$(findmnt -n -o SOURCE /)")"
