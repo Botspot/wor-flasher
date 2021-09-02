@@ -96,6 +96,7 @@ The `install-wor.sh` script is designed to be used within other, larger bash scr
 - `CAN_INSTALL_ON_SAME_DRIVE`: Set this variable to "`1`" if the device is larger than 25GB and you wish to install Windows on itself. Otherwise, set it to "`0`".
 - `CONFIG_TXT`: Set this variable to customize the `/boot/config.txt` of the resulting drive. This is commonly used for overclocking or to change HDMI settings. [This is the default value.](https://github.com/pftf/RPi4/blob/master/config.txt)
 - `RUN_MODE`: Set this to "`gui`" if you want `install-wor.sh` to display graphical error messages.
+- `DRY_RUN`: Set this variable to "`1`" to proceed through the setup as normal, but to exit after downloading everything. This prevents the device from being flashed.
 
 ### Functions
 The `install-wor.sh` script is designed to be used within other, larger bash scripts. For improved integration, `install-wor.sh` is equipped with a variety of useful functions that frontend scripts like `install-wor-gui.sh` can use.  
@@ -153,6 +154,12 @@ get_size_raw /dev/sda
 ```
 - `list_devs` - list available storage drives in a human-readable, colored format.  
 Usage:  
+```
+- `get_space_free` - Get the available disk space of a folder  
+Input: path to folder to check  
+Usage:  
+```
+get_space_free ~/wor-flasher-files
 ```
 list_devs
 ```
