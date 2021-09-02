@@ -125,6 +125,10 @@ get_size_raw() { #Input: device. Output: total size of device in bytes
   lsblk -b --output SIZE -n -d "$1"
 }
 
+get_space_free() { #Input: folder to check. Output: show many bytes can fit before the disk is full
+  df -B 1 "$1" --output=avail | tail -1 | tr -d ' '
+}
+
 list_devs() { #Output: human-readable, colorized list of valid block devices to write to. Omits /dev/loop* and the root device
   local IFS=$'\n'
   for device in $(lsblk -I 8,179 -dno PATH | grep -v loop | grep -vx "$ROOT_DEV") ;do
@@ -382,6 +386,10 @@ fi
 #get UUPDump package
 #get other versions from: https://uupdump.net/
 if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
+  if [ "$(get_space_free "$DL_DIR")" -lt $((7*1024*1024*1024)) ];then
+    error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n7GB is necessary."
+  fi
+  
   echo_white "Downloading uupdump script to legally generate Windows ISO"
   
   if [ -z "$UUID" ];then
@@ -404,19 +412,32 @@ if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
   #run uup_download_linux.sh
   prepwd="$(pwd)"
   cd "$(pwd)/uupdump"
-  nice "$(pwd)/uup_download_linux.sh" || error "Failed to generate a Windows ISO! (uup_download_linux.sh script indicated a failure)"
+  #Allow uupdump to fail 10 times before giving up
+  for i in {1..4}; do
+    nice "$(pwd)/uup_download_linux.sh"
+    if [ $? == 0 ];then
+      echo_white "\nuup_download_linux.sh successfully generated a complete Windows image."
+      break
+    else
+      echo_white "\nuup_download_linux.sh failed, most likely due to unreliable Internet.\nTrying again in 1 minute. (Attempt $i of 4)"
+      sleep 60
+    fi
+  done
   cd "$prepwd"
+  
+  #check that the ISO file really does exist and filename includes 'ARM64'
+  [ -f "$(pwd)/uupdump"/*ARM64*.ISO ] || error "Failed to generate a Windows ISO! (No file named $(pwd)/uupdump/*ARM64*.ISO exists)"
 else
   echo_white "Reusing same Windows image that was generated in the past"
 fi
 
-if [ ! -b "$DEVICE" ];then
-  error "Device $DEVICE is not a valid block device! Available devices:\n$(list_devs)"
+if [ "$DRY_RUN" == 1 ];then
+  echo_white "Exiting the install-wor.sh script now because the DRY_RUN variable was set to '1'."
+  exit 0
 fi
 
-#set to true for a dry run
-if false;then
-  exit 0
+if [ ! -b "$DEVICE" ];then
+  error "Device $DEVICE is not a valid block device! Available devices:\n$(list_devs)"
 fi
 
 echo_white "Formatting ${DEVICE}"
@@ -448,7 +469,12 @@ sudo mount "$(get_partition "$DEVICE" 2)" "$mntpnt"/winpart || error "Failed to 
 
 echo_white "Mounting image"
 mkdir -p "$(pwd)/isomount" || error "Failed to make $(pwd)/isomount folder"
-sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount" || error "Failed to mount ISO file ($(echo "$(pwd)/uupdump"/*.ISO)) to $(pwd)/isomount"
+sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount"
+if [ $? != 0 ];then
+  echo_white "Failed to mount the image. Trying again after loading the 'udf' kernel module."
+  sudo modprobe udf
+  sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount" || error "Failed to mount ISO file ($(echo "$(pwd)/uupdump"/*.ISO)) to $(pwd)/isomount"
+fi
 
 echo_white "Copying files from image to device"
 sudo cp -r $(pwd)/isomount/boot "$mntpnt"/bootpart || error "Failed to copy $(pwd)/isomount/boot to $mntpnt/bootpart"

@@ -153,9 +153,7 @@ echo "CAN_INSTALL_ON_SAME_DRIVE: $CAN_INSTALL_ON_SAME_DRIVE"
 
 { #confirmation dialog and edit config.txt
 
-window_text="<big><b>Installation Overview</b></big>
-
-- Target drive: <b>$DEVICE</b> ($(lsblk -dno SIZE "$DEVICE")B $(get_name "$DEVICE"))
+window_text="- Target drive: <b>$DEVICE</b> ($(lsblk -dno SIZE "$DEVICE")B $(get_name "$DEVICE"))
 - $(echo "$CAN_INSTALL_ON_SAME_DRIVE" | sed 's/1/Drive is larger than 25 GB - can install Windows on itself/g' | sed 's/0/Drive is smaller than 25 GB - can install Windows on other drives/g')
 - Hardware type: <b>Raspberry Pi $RPI_MODEL</b>
 - Operating system: <b>$(get_os_name "$UUID" | sed "s/ build / ($WIN_LANG) arm64 build /g")</b>"
@@ -182,10 +180,11 @@ dtoverlay=miniuart-bt"
   
 fi
 
-CONFIG_TXT="$(yad "${yadflags[@]}" --width=530 --height=420 --image="$DIRECTORY/logo-full.png" \
-  --text="$window_text" --separator='\n' --form \
+CONFIG_TXT="$(yad "${yadflags[@]}" --width=500 --height=400 --image="$DIRECTORY/overview.png" --image-on-top \
+  --separator='\n' --form \
   "${existing_img_chk[@]}" \
-  --field='Edit <b>config.txt</b>:':TXT "$CONFIG_TXT" \
+  --field="$window_text":LBL '' \
+  --field="<b>Edit config.txt:</b>     <small>Want to overclock? <a href="\""file://${DIRECTORY}/config_txt_tips"\"">Click here</a></small>":TXT "$CONFIG_TXT" \
   --field="<b>Warning!</b> All data on the target drive will be deleted!":LBL '' \
   --button='<b>Flash</b>'!!"Warning! All data on the target drive will be deleted! Backup any files before it's too late!":0
 )"
@@ -232,6 +231,7 @@ if true;then
   CAN_INSTALL_ON_SAME_DRIVE="\""$CAN_INSTALL_ON_SAME_DRIVE"\""
   CONFIG_TXT="\""$CONFIG_TXT"\""
   RUN_MODE=gui
+  DRY_RUN="\""$DRY_RUN"\""
   $cli_script || sleep infinity" "Running $(basename "$cli_script")"
 fi
 echo "The terminal running install-wor.sh has been closed."

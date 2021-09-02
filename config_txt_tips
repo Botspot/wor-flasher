@@ -1,0 +1,17 @@
+Setting your overclock too high will prevent your Pi from booting. This is no big deal - just unplug the SD card and reduce the settings in its config.txt file, then boot it again.
+Each Pi4 has a different limit, but nearly all of them can handle a 2GHz overclock.
+
+Note: WoR does not use the GPU, so overclocking it won't make a noticeable difference.
+
+2.1GHz overclock:
+over_voltage=6
+arm_freq=2147
+gpu_freq=700
+
+Maximum settings for only the 8GB Pi4 and Pi400: (possibly dangerous)
+initial_turbo=60
+over_voltage=15
+arm_freq_min=100
+arm_freq=2350
+gpu_freq=800
+gpu_mem=512
