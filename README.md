@@ -30,10 +30,10 @@ This will download the scripts to a new directory named `wor-flasher`.
 - Plug in a writable storage device to flash Windows to.  
 ![page3](https://user-images.githubusercontent.com/54716352/131228296-fb61f216-9a12-412a-b7b5-0bcd185891a0.png)  
   - If the storage device is larger than 25GB, it is capable of installing Windows to itself.
-  - If the storage device is smaller than 25GB but larger than 7GB, it can only install Windows **on other drives**. (like recovery/reset disk)
+  - If the storage device is smaller than 25GB but larger than 7GB, it can only install Windows **on other drives greater than 16GB**. (like a recovery/reset disk)
   - If the storage device is smaller than 7GB, it is too small to be usable.
 - Double-check that everything looks correct before clicking the Flash button.  
-![page4](https://user-images.githubusercontent.com/54716352/131228359-5d322ee6-ecd7-41b9-8220-d18e9f38f232.png)  
+![page4](https://user-images.githubusercontent.com/54716352/131921620-7ca69a5c-13fe-4236-8e0e-27ff4cfffa10.png)  
 - A terminal will launch and run the `install-wor.sh` script:  
 ![terminal3](https://user-images.githubusercontent.com/54716352/131228381-11dc3a4e-96da-40ec-8f46-8b28ade5ee52.png)  
 Note: this can take a lot of time to download individual files from Microsoft, compress them, and generate a Windows image. Fortunately, subsequent runs can skip the lengthy image-generating step if the ISO file exists.  
@@ -98,6 +98,11 @@ The `install-wor.sh` script is designed to be used within other, larger bash scr
 - `RUN_MODE`: Set this to "`gui`" if you want `install-wor.sh` to display graphical error messages.
 - `DRY_RUN`: Set this variable to "`1`" to proceed through the setup as normal, but to exit after downloading everything. This prevents the device from being flashed.
 
+Example usage:
+```
+UUID=db8ec987-d136-4421-afb8-2ef109396b00 RPI_MODEL=4 WIN_LANG=en-us DEVICE=/dev/sdg DRY_RUN=1 ~/wor-flasher/install-wor-gui.sh
+```
+
 ### Functions
 The `install-wor.sh` script is designed to be used within other, larger bash scripts. For improved integration, `install-wor.sh` is equipped with a variety of useful functions that frontend scripts like `install-wor-gui.sh` can use.  
 **To source the script** so the functions are available:
@@ -155,13 +160,19 @@ get_size_raw /dev/sda
 - `list_devs` - list available storage drives in a human-readable, colored format.  
 Usage:  
 ```
+list_devs
+```
+- `get_uuid` - Get the latest Windows update ID for either Windows 10 or Windows 11  
+Input: "`10`" or "`11`"
+Usage:  
+```
+get_uuid 11
+```
 - `get_space_free` - Get the available disk space of a folder  
 Input: path to folder to check  
 Usage:  
 ```
 get_space_free ~/wor-flasher-files
-```
-list_devs
 ```
 - `check-uuid` - Determine if the given UUID is a valid format. (Windows update IDs are in a UUID format)  
 Input: UUID to check  
@@ -175,4 +186,48 @@ Input: valid Windows update ID
 Usage:
 ```
 get_os_name db8ec987-d136-4421-afb8-2ef109396b00
+```
+
+### Example function and variable usage
+This code will non-interactively flash Windows 11 to `/dev/sda` and add overclock settings. You can copy and paste the code into a terminal, or save this as a shell script.
+```bash
+#make all variables we set to be visible to the script (only necessary if you run this in a terminal)
+set -a
+
+#First, source the script so its functions are available
+source ~/wor-flasher/install-wor.sh source
+
+#Determine the latest Windows 11 update ID using a function
+UUID="$(get_uuid 11)"
+
+#set destination RPi model
+RPI_MODEL=4
+
+#choose language
+WIN_LANG=en-us
+
+#set the device to flash
+DEVICE=/dev/sda
+
+#set a custom config.txt
+CONFIG_TXT="over_voltage=6
+arm_freq=2147
+gpu_freq=750
+
+# don't change anything below this point #
+arm_64bit=1
+enable_uart=1
+uart_2ndstage=1
+enable_gic=1
+armstub=RPI_EFI.fd
+disable_commandline_tags=1
+disable_overscan=1
+device_tree_address=0x1f0000
+device_tree_end=0x200000
+dtoverlay=miniuart-bt"
+
+#indicate that drive is large enough to install Windows to itself
+CAN_INSTALL_ON_SAME_DRIVE=1
+
+~/wor-flasher/install-wor.sh
 ```
