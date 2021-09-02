@@ -17,7 +17,8 @@ Now, using the new WoR-flasher, it's a *piece of cake*.
 ```
 git clone https://github.com/Botspot/wor-flasher
 ```
-This will create a new folder in your home directory named `wor-flasher`.
+This will download the scripts to a new directory named `wor-flasher`.  
+**Dependencies:** No need to install packages manually. Running the script will automatically install these: `yad` `aria2` `cabextract` `wimtools` `chntpw` `genisoimage` `exfat-fuse` `exfat-utils` `wget`
 ### To run WoR-flasher using the graphical interface
 ```
 ~/wor-flasher/install-wor-gui.sh
@@ -35,7 +36,7 @@ This will create a new folder in your home directory named `wor-flasher`.
 ![page4](https://user-images.githubusercontent.com/54716352/131228359-5d322ee6-ecd7-41b9-8220-d18e9f38f232.png)  
 - A terminal will launch and run the `install-wor.sh` script:  
 ![terminal3](https://user-images.githubusercontent.com/54716352/131228381-11dc3a4e-96da-40ec-8f46-8b28ade5ee52.png)  
-Note: this can take a lot of time to download individual files from Microsoft, package them, and generate a Windows image. Fortunately, subsequent runs can skip the lengthy image-generating step if the ISO file exists.  
+Note: this can take a lot of time to download individual files from Microsoft, compress them, and generate a Windows image. Fortunately, subsequent runs can skip the lengthy image-generating step if the ISO file exists.  
 - If all goes well, the terminal will close and you will be told what to do next.  
 ![next steps](https://user-images.githubusercontent.com/54716352/131228409-f84ede9b-a1fc-43f9-a79c-5b1853513960.png)  
 ### To run WoR-flasher using the terminal interface
