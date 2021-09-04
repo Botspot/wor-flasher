@@ -113,7 +113,7 @@ The `install-wor.sh` script is designed to be used within other, larger bash scr
 ```
 source ~/wor-flasher/install-wor.sh source
 ```
-Question: why does that comman say "`source`" twice? Answer: The first "`source`" is a command, and the second "`source`" is a command-line flag that is passed to the script to let it know you are sourcing it.
+Question: why does that command say "`source`" twice? Answer: The first "`source`" is a command, and the second "`source`" is a command-line flag that is passed to the script to let it know you are sourcing it.
 Once the script is sourced, these new commands (also known as functions) become available:  
 - `error` - a simple function that Botspot uses in bash scripts to warn the user that something failed and to exit the script with a failure code. (1)  
 Input: string containing the error message  
