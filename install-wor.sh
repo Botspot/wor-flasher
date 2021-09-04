@@ -54,7 +54,7 @@ install_packages() { #input: space-separated list of apt packages to install
   PREIFS="$IFS"
   local IFS=' '
   for package in $dependencies ;do
-    if ! dpkg -l "$package" &>/dev/null ;then
+    if ! dpkg -s "$package" 2>/dev/null | grep -q 'Status: install ok installed' ;then
       #if the currently-checked package is not installed, add it to the list of packages to install
       if [ -z "$install_list" ];then
         install_list="$package"
