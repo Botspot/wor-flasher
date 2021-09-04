@@ -446,13 +446,13 @@ echo_white "Creating partition table"
 sudo parted -s "$DEVICE" mklabel gpt || error "Failed to make GPT partition table on ${DEVICE}!"
 sync
 echo_white "Generating partitions"
-sudo parted -s "$DEVICE" mkpart primary 1MB 1000MB || error "Failed to make first primary partition on ${DEVICE}!"
+sudo parted -s "$DEVICE" mkpart primary 1MB 1000MB || error "Failed to make 1GB primary partition 1 on ${DEVICE}!"
 sudo parted -s "$DEVICE" set 1 msftdata on || error "Failed to enable msftdata flag on $DEVICE partition 1"
 sync
 if [ $CAN_INSTALL_ON_SAME_DRIVE == 1 ];then
-  sudo parted -s "$DEVICE" mkpart primary 1000MB 19000MB || error "Failed to make second primary partition on ${DEVICE}!"
+  sudo parted -s "$DEVICE" mkpart primary 1000MB 19000MB || error "Failed to make 19GB primary partition 2 on ${DEVICE}!"
 else
-  sudo parted -s "$DEVICE" mkpart primary 1000MB 6000MB || error "Failed to make second primary partition on ${DEVICE}!"
+  sudo parted -s "$DEVICE" mkpart primary 1000MB 6000MB || error "Failed to make 6GB primary partition 2 on ${DEVICE}!"
 fi
 sudo parted -s "$DEVICE" set 2 msftdata on || error "Failed to enable msftdata flag on $DEVICE partition 2"
 sync
@@ -465,7 +465,12 @@ echo_white "Mounting ${DEVICE} device to $mntpnt"
 sudo mkdir -p "$mntpnt"/bootpart || error "Failed to create mountpoint: $mntpnt/bootpart"
 sudo mkdir -p "$mntpnt"/winpart || error "Failed to create mountpoint: $mntpnt/winpart"
 sudo mount "$(get_partition "$DEVICE" 1)" "$mntpnt"/bootpart || error "Failed to mount $(get_partition "$DEVICE" 1) to $mntpnt/bootpart"
-sudo mount "$(get_partition "$DEVICE" 2)" "$mntpnt"/winpart || error "Failed to mount $(get_partition "$DEVICE" 2) to $mntpnt/winpart"
+sudo mount "$(get_partition "$DEVICE" 2)" "$mntpnt"/winpart
+if [ $? != 0 ];then
+  echo_white "Failed to mount $(get_partition "$DEVICE" 2). Trying again after loading the 'fuse' kernel module."
+  sudo modprobe fuse
+  sudo mount "$(get_partition "$DEVICE" 2)" "$mntpnt"/winpart || error "Failed to mount $(get_partition "$DEVICE" 2) to $mntpnt/winpart"
+fi
 
 echo_white "Mounting image"
 mkdir -p "$(pwd)/isomount" || error "Failed to make $(pwd)/isomount folder"
