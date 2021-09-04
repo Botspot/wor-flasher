@@ -386,7 +386,7 @@ fi
 #get UUPDump package
 #get other versions from: https://uupdump.net/
 if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
-  if [ "$(get_space_free "$DL_DIR")" -lt $((7*1024*1024*1024)) ];then
+  if [ "$(get_space_free "$DL_DIR")" -lt $((9*1024*1024*1024)) ];then
     error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n7GB is necessary."
   fi
   
