@@ -502,7 +502,8 @@ echo_white "Copying UEFI package to image"
 sudo cp uefipackage/* "$mntpnt"/bootpart 2>/dev/null # the -r flag ommitted on purpose
 
 if [ $RPI_MODEL == 3 ];then
-  sudo dd if=peinstaller/pi3/gptpatch.img of="$DEVICE" conv=fsync
+  echo_white "Applying GPT partition-table fix for the Pi3"
+  sudo dd if=$(pwd)/peinstaller/pi3/gptpatch.img of="$DEVICE" conv=fsync || error "The 'dd' command failed to flash $(pwd)/peinstaller/pi3/gptpatch.img to $DEVICE"
 fi
 
 if [ ! -z "$CONFIG_TXT" ];then
