@@ -6,11 +6,12 @@ In July 2021, this required following [a complicated tutorial](https://worprojec
 Now, using the new WoR-flasher, it's a *piece of cake*.  
 
 ## Useful information
-- This tool is **100% legal**. All propriatary Windows components are downloaded straight from Microsoft's update servers using [uupdump](https://uupdump.net). Consider reading [this debate](https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=318599) that took place on the Raspberry Pi Forums. At the conclusion of the thread, Raspberry Pi **employees** [confirm](https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=318599#p1907313) that WoR is 100% legal.
+- This tool is **100% legal**. All propriatary Windows components are downloaded straight from Microsoft's update servers using [uupdump](https://uupdump.net). Consider reading [this debate](https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=318599) that took place on the Raspberry Pi Forums. At the conclusion of the thread, Raspberry Pi **employees** [confirm](https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=318599#p1907313) that WoR is 100% legal. The OS comes straight from Microsoft servers, and is unlicenced just like a regular Windows ISO, and can be activated if the user wishes via a activation key or logs in with a Microsoft account that has a licence assosiated with it.
 - In theory, this tool will run correctly on any Debian-based Linux, ARM or x86. However, this tool has only been tested to run correctly on Raspberry Pi OS 32-bit. Botspot (the developer of this tool) cannot be held responsible for data loss!
 - Need help using the WoR-flasher tool? You can [open an issue](https://github.com/Botspot/wor-flasher/issues/new/choose) or ask for help in [the Botspot Software discord server](https://discord.gg/RXSTvaUvuu).
 - Need help using Windows on Raspberry (The operating system)? Contact the WoR developers [through email](https://worproject.ml/contact) or [join their Discord server](https://discord.gg/worofficial).
 - By default, WoR will limit your usable RAM to 3GB due to a complication in the Pi4's CPU design. There is a workaround, but it's not the default. [Click here for details](https://worproject.ml/faq#only-3-gb-of-ram-are-available-how-can-i-fix-this)
+- Due to how the NTLite debloater works, it will not run on Linux even with Wine, which means that you won't be able to debloat the OS. In the end performance is about the same, but there will be extra apps you'll have to manually remove if you wish to remove he extra preinstalled apps.
 
 ## WoR-flasher walkthrough
 ### Install WoR-flasher
