@@ -51,6 +51,8 @@ fi
 install_packages() { #input: space-separated list of apt packages to install
   [ -z "$1" ] && error "install_packages(): requires a list of apt packages to install"
   dependencies="$1"
+  install_list=''
+  
   PREIFS="$IFS"
   local IFS=' '
   for package in $dependencies ;do
@@ -87,9 +89,13 @@ get_partition() { #Input: device & partition number. Output: partition /dev entr
   [ -z "$2" ] && error "get_partition(): no partition number specified as"' $2'
   [ ! -b "$1" ] && error "get_partition(): $1 is not a valid block device!"
   
-  #list drive and partitions in $1, filter out the drive, then get the Nth line
-  lsblk -no PATH "$1" | grep -vx "$1" | sed -n "$2"p
-  
+  if [ "$2" == 'all' ];then
+    #special mode: return every partition if $2 is 'all'
+    lsblk -no path "$1" | grep -vx "$1"
+  else #provided with partition number
+    #list drive and partitions in $1, filter out the drive, then get the Nth line
+    lsblk -no PATH "$1" | grep -vx "$1" | sed -n "$2"p
+  fi
 }
 
 get_name() { #get human-readable name of device: manufacturer and model name
@@ -441,7 +447,7 @@ if [ ! -b "$DEVICE" ];then
 fi
 
 echo_white "Formatting ${DEVICE}"
-sudo umount -q "$DEVICE"?
+sudo umount -ql $(get_partition "$DEVICE" all) || error "Failed to unmount all partitions in $DEVICE. This is not a bug in WoR-flasher."
 echo_white "Creating partition table"
 sudo parted -s "$DEVICE" mklabel gpt || error "Failed to make GPT partition table on ${DEVICE}!"
 sync
@@ -512,6 +518,6 @@ if [ ! -z "$CONFIG_TXT" ];then
 fi
 
 echo_white "Unmounting drive ${drive}"
-sudo umount -q "$DEVICE"? || echo_white "Warning: the umount command failed to unmount all partitions within $DEVICE"
+sudo umount -q $(get_partition "$DEVICE" all) || echo_white "Warning: the umount command failed to unmount all partitions within $DEVICE"
 sudo rm -rf "$mntpnt" || echo_white "Warning: Failed to remove the mountpoint folder: $mntpnt"
 echo_white "$(basename "$0") script has completed."
