@@ -348,11 +348,12 @@ RPI_MODEL: $RPI_MODEL
 DEVICE: $DEVICE
 CAN_INSTALL_ON_SAME_DRIVE: $CAN_INSTALL_ON_SAME_DRIVE
 UUID: $UUID
-WIN_LANG: $WIN_LANG
-CONFIG_TXT: ⤵
+WIN_LANG: $WIN_LANG"
+[ ! -z "$CONFIG_TXT" ] && echo "CONFIG_TXT: ⤵
 $(echo "$CONFIG_TXT" | grep . | sed 's/^/  > /g')
-CONFIG_TXT: ⤴
-"
+CONFIG_TXT: ⤴"
+[ ! -z "$DRY_RUN" ] && echo "DRY_RUN: $DRY_RUN"
+echo
 
 PE_INSTALLER_SHA256=$(wget -qO- https://worproject.ml/dldserv/worpe/gethashlatest.php | cut -d ':' -f2)
 [ -z "$PE_INSTALLER_SHA256" ] && error "Failed to determine a hashsum for WoR PE-based installer.\nURL: https://worproject.ml/dldserv/worpe/gethashlatest.php"
@@ -400,8 +401,8 @@ fi
 #get UUPDump package
 #get other versions from: https://uupdump.net/
 if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
-  if [ "$(get_space_free "$DL_DIR")" -lt $((9*1024*1024*1024)) ];then
-    error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n9GB is necessary."
+  if [ "$(get_space_free "$DL_DIR")" -lt 11863226125 ];then
+    error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n11.8GB is necessary."
   elif df -T "$DL_DIR" | grep -q 'fat' ;then
     error "The $DL_DIR directory is on a FAT32 partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 6GB."
   fi
@@ -464,7 +465,7 @@ if [ ! -b "$DEVICE" ];then
 fi
 
 echo_white "Formatting ${DEVICE}"
-sudo umount -q --force --all-targets $(get_partition "$DEVICE" all) || error "Failed to unmount all partitions in $DEVICE. This is not a bug in WoR-flasher."
+sudo umount --force --all-targets $(get_partition "$DEVICE" all)
 sync
 echo_white "Creating partition table"
 sudo parted -s "$DEVICE" mklabel gpt || error "Failed to make GPT partition table on ${DEVICE}!"
