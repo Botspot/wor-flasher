@@ -149,6 +149,9 @@ get_partition /dev/sda 2
 
 get_partition /dev/mmcblk0 2
 #Assuming partition 2 exists, the above command returns "/dev/mmcblk0p2"
+
+get_partition /dev/mmcblk0 all
+#Returns every partition within the drive, each one on a line
 ```
 - `get_name` - Determine a human-readable name for the given storage drive.  
 Input: block device of drive  
