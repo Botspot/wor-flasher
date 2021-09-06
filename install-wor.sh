@@ -116,12 +116,16 @@ get_name() { #get human-readable name of device: manufacturer and model name
   sys_path="$(echo "$sys_path" | tr '/' '\n' | head -n -6 | tr '\n' '/')"
   #sys_path may be: /sys/devices/platform/scb/fd500000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/usb2/2-2/
   
-  product="$(cat "${sys_path}product")"
-  manufacturer="$(cat "${sys_path}manufacturer")"
+  product="$(cat "${sys_path}product" 2>/dev/null)"
+  manufacturer="$(cat "${sys_path}manufacturer" 2>/dev/null)"
   #serial="$(cat "$sys_path"/serial)"
   
+  if [ -z "$product$manufacturer" ] && [[ "$1" == /dev/mmcblk* ]];then
+    manufacturer="SD card"
+  fi
+  
   if [ "$manufacturer" != "$product" ];then
-    echo "$manufacturer $product"
+    echo "$manufacturer $product" | sed 's/ $//g' | sed 's/^ //g'
   else
     echo "$manufacturer"
   fi
@@ -359,9 +363,13 @@ if [ ! -f "$(pwd)/WoR-PE_Package.zip" ] || ! echo "$PE_INSTALLER_SHA256 $(pwd)/W
   #determine Google Drive FILEUUID from given redirect URL
   FILEUUID="$(wget --spider --content-disposition --trust-server-names -O /dev/null "$URL" 2>&1 | grep Location | sed 's/^Location: //g' | sed 's/ \[following\]$//g' | grep 'drive\.google\.com' | sed 's+.*/++g' | sed 's/.*&id=//g')"
   download_from_gdrive "$FILEUUID" "$(pwd)/WoR-PE_Package.zip" || error "Failed to download Windows on Raspberry PE-based installer"
-
-  echo "$PE_INSTALLER_SHA256 $(pwd)/WoR-PE_Package.zip" | sha256sum -c || error "PE-based installer integrity check failed"
-
+  
+  echo "$PE_INSTALLER_SHA256 $(pwd)/WoR-PE_Package.zip" | sha256sum -c &>/dev/null
+  if [ $? != 0 ];then
+    rm -f "$(pwd)/WoR-PE_Package.zip"
+    error "PE-based installer integrity check failed"
+  fi
+  
   rm -rf peinstaller
   unzip -q "$(pwd)/WoR-PE_Package.zip" -d peinstaller || error "The unzip command failed to extract $(pwd)/WoR-PE_Package.zip"
   echo
@@ -393,7 +401,9 @@ fi
 #get other versions from: https://uupdump.net/
 if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
   if [ "$(get_space_free "$DL_DIR")" -lt $((9*1024*1024*1024)) ];then
-    error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n7GB is necessary."
+    error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n9GB is necessary."
+  elif df -T "$DL_DIR" | grep -q 'fat' ;then
+    error "The $DL_DIR directory is on a FAT32 partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 6GB."
   fi
   
   echo_white "Downloading uupdump script to legally generate Windows ISO"
@@ -418,21 +428,28 @@ if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
   #run uup_download_linux.sh
   prepwd="$(pwd)"
   cd "$(pwd)/uupdump"
-  #Allow uupdump to fail 10 times before giving up
+  #Allow uupdump to fail 4 times before giving up
   for i in {1..4}; do
     nice "$(pwd)/uup_download_linux.sh"
     if [ $? == 0 ];then
       echo_white "\nuup_download_linux.sh successfully generated a complete Windows image."
+      uup_failed=0
       break
     else
       echo_white "\nuup_download_linux.sh failed, most likely due to unreliable Internet.\nTrying again in 1 minute. (Attempt $i of 4)"
+      uup_failed=1
       sleep 60
     fi
   done
   cd "$prepwd"
   
   #check that the ISO file really does exist and filename includes 'ARM64'
-  [ -f "$(pwd)/uupdump"/*ARM64*.ISO ] || error "Failed to generate a Windows ISO! (No file named $(pwd)/uupdump/*ARM64*.ISO exists)"
+  if [ "$uup_failed" == 1 ];then
+    rm -f "$(pwd)/uupdump"/*ARM64*.ISO &
+    error "Failed to generate a Windows ISO! uup_download_linux.sh exited with an error so please see the errors above."
+  elif [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
+    error "Failed to generate a Windows ISO! uup_download_linux.sh did not exit with an error, but there is no file matching "\""$(pwd)/uupdump/*ARM64*.ISO"\"""
+  fi
 else
   echo_white "Reusing same Windows image that was generated in the past"
 fi
@@ -447,7 +464,8 @@ if [ ! -b "$DEVICE" ];then
 fi
 
 echo_white "Formatting ${DEVICE}"
-sudo umount -ql $(get_partition "$DEVICE" all) || error "Failed to unmount all partitions in $DEVICE. This is not a bug in WoR-flasher."
+sudo umount -q --force --all-targets $(get_partition "$DEVICE" all) || error "Failed to unmount all partitions in $DEVICE. This is not a bug in WoR-flasher."
+sync
 echo_white "Creating partition table"
 sudo parted -s "$DEVICE" mklabel gpt || error "Failed to make GPT partition table on ${DEVICE}!"
 sync
@@ -518,6 +536,7 @@ if [ ! -z "$CONFIG_TXT" ];then
 fi
 
 echo_white "Unmounting drive ${drive}"
+sync
 sudo umount -q $(get_partition "$DEVICE" all) || echo_white "Warning: the umount command failed to unmount all partitions within $DEVICE"
 sudo rm -rf "$mntpnt" || echo_white "Warning: Failed to remove the mountpoint folder: $mntpnt"
 echo_white "$(basename "$0") script has completed."
