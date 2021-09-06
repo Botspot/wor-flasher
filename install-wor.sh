@@ -175,11 +175,18 @@ get_os_name() { #input: build id Output: human-readable name of operating system
   [ -z "$wget_out" ] && error "get_os_name(): failed to retrieve data for $1"
   
   #example value: 'Windows 11'
-  local version="$(echo "$wget_out" | grep '^title:' | sed 's/.*for //g' | sed 's/ (.*//g')"
+  local version="Windows $(echo "$wget_out" | grep '^title:' | tr ' ' '\n' | grep 'Windows' --after 1 | tail -1)"
+  #example value: 'build 22000.160'
   local build="$(echo "$wget_out" | grep '^build:' | awk -F: '{print $2}')"
   
   echo -e "$version build $build"
 }
+
+#check for internet connection
+wget_errors="$(wget --spider github.com 2>&1)"
+if [ $? != 0 ];then
+  error "No internet connection!\ngithub.com failed to respond.\nErrors: $wget_errors"
+fi
 
 [ "$1" == 'source' ] && return 0 #If being sourced, exit here at this point in the script
 #past this point, this script is being run, not sourced.
@@ -425,6 +432,10 @@ if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
   rm "$(pwd)/uupdump.zip"
   chmod +x "$(pwd)/uupdump/uup_download_linux.sh" || error "Failed to mark $(pwd)/UUPDump_22000/uup_download_linux.sh script as executable!"
   
+  #add /usr/sbin to PATH variable so the chntpw command can be found
+  set -a #export all variables so the script can see them
+  PATH="$(echo "${PATH}:/usr/sbin" | tr ':' '\n' | sort | uniq | tr '\n' ':')"
+  
   echo_white "Generating Windows image with uupdump"
   #run uup_download_linux.sh
   prepwd="$(pwd)"
@@ -465,7 +476,8 @@ if [ ! -b "$DEVICE" ];then
 fi
 
 echo_white "Formatting ${DEVICE}"
-sudo umount --force --all-targets $(get_partition "$DEVICE" all)
+sync
+sudo umount -ql $(get_partition "$DEVICE" all)
 sync
 echo_white "Creating partition table"
 sudo parted -s "$DEVICE" mklabel gpt || error "Failed to make GPT partition table on ${DEVICE}!"
@@ -499,18 +511,23 @@ fi
 
 echo_white "Mounting image"
 mkdir -p "$(pwd)/isomount" || error "Failed to make $(pwd)/isomount folder"
-sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount"
+sudo umount "$(pwd)/isomount" 2>/dev/null
+sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount" 2>/dev/null
 if [ $? != 0 ];then
   echo_white "Failed to mount the image. Trying again after loading the 'udf' kernel module."
   sudo modprobe udf
   sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount" || error "Failed to mount ISO file ($(echo "$(pwd)/uupdump"/*.ISO)) to $(pwd)/isomount"
 fi
 
-echo_white "Copying files from image to device"
+echo_white "Copying files from image to device:"
+echo "  - Boot files"
 sudo cp -r $(pwd)/isomount/boot "$mntpnt"/bootpart || error "Failed to copy $(pwd)/isomount/boot to $mntpnt/bootpart"
+echo "  - EFI files"
 sudo cp -r $(pwd)/isomount/efi "$mntpnt"/bootpart || error "Failed to copy $(pwd)/isomount/efi to $mntpnt/bootpart"
 sudo mkdir -p "$mntpnt"/bootpart/sources || error "Failed to make folder: $mntpnt/bootpart/sources"
+echo "  - boot.wim"
 sudo cp $(pwd)/isomount/sources/boot.wim "$mntpnt"/bootpart/sources || error "Failed to make folder: $(pwd)/isomount/sources/boot.wim to $mntpnt/bootpart/sources"
+echo "  - install.wim"
 sudo cp $(pwd)/isomount/sources/install.wim "$mntpnt"/winpart || error "Failed to make folder: $(pwd)/isomount/sources/install.wim to $mntpnt/winpart"
 
 echo_white "Unmounting image"
