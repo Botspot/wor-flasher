@@ -362,12 +362,17 @@ CONFIG_TXT: ⤴"
 [ ! -z "$DRY_RUN" ] && echo "DRY_RUN: $DRY_RUN"
 echo
 
-PE_INSTALLER_SHA256=$(wget -qO- https://worproject.ml/dldserv/worpe/gethashlatest.php | cut -d ':' -f2)
-[ -z "$PE_INSTALLER_SHA256" ] && error "Failed to determine a hashsum for WoR PE-based installer.\nURL: https://worproject.ml/dldserv/worpe/gethashlatest.php"
+#Make sure that DL_DIR is not set to a drive with a FAT-type partition
+if df -T "$DL_DIR" | grep -q 'fat' ;then
+  error "The $DL_DIR directory is on a FAT32/FAT16/vfat partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 4.3GB.\nPlease format $DL_DIR to use an Ext4 partition."
+fi
+
+PE_INSTALLER_SHA256=$(wget -qO- http://worproject.ml/dldserv/worpe/gethashlatest.php | cut -d ':' -f2)
+[ -z "$PE_INSTALLER_SHA256" ] && error "Failed to determine a hashsum for WoR PE-based installer.\nURL: http://worproject.ml/dldserv/worpe/gethashlatest.php"
 if [ ! -f "$(pwd)/WoR-PE_Package.zip" ] || ! echo "$PE_INSTALLER_SHA256 $(pwd)/WoR-PE_Package.zip" | sha256sum -c ;then
   echo_white "Downloading WoR PE-based installer from Google Drive"
   #from: https://worproject.ml/downloads#windows-on-raspberry-pe-based-installer
-  URL='https://worproject.ml/dldserv/worpe/downloadlatest.php'
+  URL='http://worproject.ml/dldserv/worpe/downloadlatest.php'
   #determine Google Drive FILEUUID from given redirect URL
   FILEUUID="$(wget --spider --content-disposition --trust-server-names -O /dev/null "$URL" 2>&1 | grep Location | sed 's/^Location: //g' | sed 's/ \[following\]$//g' | grep 'drive\.google\.com' | sed 's+.*/++g' | sed 's/.*&id=//g')"
   download_from_gdrive "$FILEUUID" "$(pwd)/WoR-PE_Package.zip" || error "Failed to download Windows on Raspberry PE-based installer"
@@ -407,11 +412,9 @@ fi
 
 #get UUPDump package
 #get other versions from: https://uupdump.net/
-if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
+if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ] || [ "$(stat -c %s "$(pwd)/uupdump"/*ARM64*.ISO)" -le 4300000000 ];then
   if [ "$(get_space_free "$DL_DIR")" -lt 11863226125 ];then
     error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n11.8GB is necessary."
-  elif df -T "$DL_DIR" | grep -q 'fat' ;then
-    error "The $DL_DIR directory is on a FAT32 partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 6GB."
   fi
   
   echo_white "Downloading uupdump script to legally generate Windows ISO"
@@ -457,7 +460,7 @@ if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
   
   #check that the ISO file really does exist and filename includes 'ARM64'
   if [ "$uup_failed" == 1 ];then
-    rm -f "$(pwd)/uupdump"/*ARM64*.ISO &
+    rm -f "$(pwd)/uupdump"/*ARM64*.ISO
     error "Failed to generate a Windows ISO! uup_download_linux.sh exited with an error so please see the errors above."
   elif [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
     error "Failed to generate a Windows ISO! uup_download_linux.sh did not exit with an error, but there is no file matching "\""$(pwd)/uupdump/*ARM64*.ISO"\"""
@@ -526,9 +529,9 @@ echo "  - EFI files"
 sudo cp -r $(pwd)/isomount/efi "$mntpnt"/bootpart || error "Failed to copy $(pwd)/isomount/efi to $mntpnt/bootpart"
 sudo mkdir -p "$mntpnt"/bootpart/sources || error "Failed to make folder: $mntpnt/bootpart/sources"
 echo "  - boot.wim"
-sudo cp $(pwd)/isomount/sources/boot.wim "$mntpnt"/bootpart/sources || error "Failed to make folder: $(pwd)/isomount/sources/boot.wim to $mntpnt/bootpart/sources"
+sudo cp $(pwd)/isomount/sources/boot.wim "$mntpnt"/bootpart/sources || error "Failed to copy $(pwd)/isomount/sources/boot.wim to $mntpnt/bootpart/sources"
 echo "  - install.wim"
-sudo cp $(pwd)/isomount/sources/install.wim "$mntpnt"/winpart || error "Failed to make folder: $(pwd)/isomount/sources/install.wim to $mntpnt/winpart"
+sudo cp $(pwd)/isomount/sources/install.wim "$mntpnt"/winpart || error "Failed to copy $(pwd)/isomount/sources/install.wim to $mntpnt/winpart"
 
 echo_white "Unmounting image"
 sudo umount "$(pwd)/isomount" || echo_white "Warning: failed to unmount $(pwd)/isomount" #failure is non-fatal
