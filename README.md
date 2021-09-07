@@ -6,7 +6,7 @@ In July 2021, this required following [a complicated tutorial](https://worprojec
 Now, using the new WoR-flasher, it's a *piece of cake*.  
 
 ## Useful information
-- This tool is **100% legal**. All propriatary Windows components are downloaded straight from Microsoft's update servers using [uupdump](https://uupdump.net). Consider reading [this debate](https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=318599) that took place on the Raspberry Pi Forums. At the conclusion of the thread, Raspberry Pi **employees** [confirm](https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=318599#p1907313) that WoR is 100% legal. The OS comes straight from Microsoft servers, and is unlicenced just like a regular Windows ISO, which can be activated via an activation key or by logging in with a pre-licensed Microsoft account.
+- This tool is **100% legal**. All propriatary Windows components are downloaded straight from Microsoft's update servers using [uupdump](https://uupdump.net). Consider reading [this debate](https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=318599) that took place on the Raspberry Pi Forums. At the conclusion of the thread, Raspberry Pi **employees** [confirm](https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=318599#p1907313) that WoR is completely legal. The OS is unlicenced just like a regular Windows ISO, which can be activated via an activation key or by logging in with a pre-licensed Microsoft account.
 - In theory, this tool will run correctly on any Debian-based Linux, ARM or x86. However, this tool has only been tested to run correctly on Raspberry Pi OS 32-bit. Botspot (the developer of this tool) cannot be held responsible for data loss!
 - Need help using the WoR-flasher tool? You can [open an issue](https://github.com/Botspot/wor-flasher/issues/new/choose) or ask for help in [the Botspot Software discord server](https://discord.gg/RXSTvaUvuu).
 - Need help using Windows on Raspberry (The operating system)? Contact the WoR developers [through email](https://worproject.ml/contact) or [join their Discord server](https://discord.gg/worofficial).
@@ -105,7 +105,7 @@ The `install-wor.sh` script is designed to be used within other, larger bash scr
 
 Example usage:
 ```
-UUID=db8ec987-d136-4421-afb8-2ef109396b00 RPI_MODEL=4 WIN_LANG=en-us DEVICE=/dev/sdg DRY_RUN=1 ~/wor-flasher/install-wor-gui.sh
+DL_DIR=/media/pi/my-big-flash-drive DEVICE=/dev/sdg DRY_RUN=1 UUID=db8ec987-d136-4421-afb8-2ef109396b00 RPI_MODEL=4 WIN_LANG=en-us ~/wor-flasher/install-wor-gui.sh
 ```
 
 ### Functions
@@ -134,7 +134,7 @@ Usage:
 ```
 install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget'
 ```
-- `download-from-gdrive` - Downloads a publically shared large-file from Google Drive. [Here's the tutorial](https://medium.com/@acpanjan/download-google-drive-files-using-wget-3c2c025a8b99) I adapted it from.  
+- `download_from_gdrive` - Downloads a publically shared large-file from Google Drive. [Here's the tutorial](https://medium.com/@acpanjan/download-google-drive-files-using-wget-3c2c025a8b99) I adapted it from.  
 Inputs: File ID, output filename  
 Usage:  
 ```
