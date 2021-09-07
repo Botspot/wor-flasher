@@ -271,8 +271,8 @@ fi
 if [ -z "$RPI_MODEL" ];then
   while true; do
     echo -ne "Choose Raspberry Pi model to deploy Windows on:
-\e[97m\e[1m1\e[0m) Raspberry Pi 4 / 400
-\e[97m\e[1m2\e[0m) Raspberry Pi 2 rev 1.2 / 3 / CM3
+\e[97m\e[1m1\e[0m) Raspberry Pi 4B / 400
+\e[97m\e[1m2\e[0m) Raspberry Pi 3B/Pi3B+ / 2B rev 1.2 / CM3
 Enter \e[97m\e[1m1\e[0m or \e[97m\e[1m2\e[0m: "
     read REPLY
     case $REPLY in
