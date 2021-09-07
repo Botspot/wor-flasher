@@ -105,7 +105,7 @@ The `install-wor.sh` script is designed to be used within other, larger bash scr
 
 Example usage:
 ```
-UUID=db8ec987-d136-4421-afb8-2ef109396b00 RPI_MODEL=4 WIN_LANG=en-us DEVICE=/dev/sdg DRY_RUN=1 ~/wor-flasher/install-wor-gui.sh
+DL_DIR=/media/pi/my-big-flash-drive DEVICE=/dev/sdg DRY_RUN=1 UUID=db8ec987-d136-4421-afb8-2ef109396b00 RPI_MODEL=4 WIN_LANG=en-us ~/wor-flasher/install-wor-gui.sh
 ```
 
 ### Functions
@@ -134,7 +134,7 @@ Usage:
 ```
 install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget'
 ```
-- `download-from-gdrive` - Downloads a publically shared large-file from Google Drive. [Here's the tutorial](https://medium.com/@acpanjan/download-google-drive-files-using-wget-3c2c025a8b99) I adapted it from.  
+- `download_from_gdrive` - Downloads a publically shared large-file from Google Drive. [Here's the tutorial](https://medium.com/@acpanjan/download-google-drive-files-using-wget-3c2c025a8b99) I adapted it from.  
 Inputs: File ID, output filename  
 Usage:  
 ```
