@@ -403,8 +403,12 @@ if [ ! -d $(pwd)/uefipackage ];then
   echo_white "Downloading UEFI package"
   #from: https://github.com/pftf/RPi4/releases
   #example download URL (will be outdated) https://github.com/pftf/RPi4/releases/download/v1.29/RPi4_UEFI_Firmware_v1.29.zip
+  
   #determine latest release download URL:
-  URL="$(wget -qO- https://api.github.com/repos/pftf/RPi${RPI_MODEL}/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_UEFI_Firmware_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
+  #URL="$(wget -qO- https://api.github.com/repos/pftf/RPi${RPI_MODEL}/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_UEFI_Firmware_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
+  
+  #use the older version of UEFI so it is compatible with outdated RPi4 bootloaders
+  URL='https://github.com/pftf/RPi4/releases/download/v1.28/RPi4_UEFI_Firmware_v1.28.zip'
   wget -O "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" "$URL" || error "Failed to download UEFI package"
   unzip -q "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" -d uefipackage || error "The unzip command failed to extract $(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
   echo
@@ -546,14 +550,14 @@ sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add driverpackag
 echo_white "Copying UEFI package to image"
 sudo cp uefipackage/* "$mntpnt"/bootpart 2>/dev/null # the -r flag ommitted on purpose
 
-if [ $RPI_MODEL == 3 ];then
-  echo_white "Applying GPT partition-table fix for the Pi3"
-  sudo dd if=$(pwd)/peinstaller/pi3/gptpatch.img of="$DEVICE" conv=fsync || error "The 'dd' command failed to flash $(pwd)/peinstaller/pi3/gptpatch.img to $DEVICE"
-fi
-
 if [ ! -z "$CONFIG_TXT" ];then
   echo_white "Customizing the drive's config.txt according to the CONFIG_TXT variable"
   echo "$CONFIG_TXT" | sudo tee "$mntpnt"/bootpart/config.txt >/dev/null
+fi
+
+if [ $RPI_MODEL == 3 ];then
+  echo_white "Applying GPT partition-table fix for the Pi3"
+  sudo dd if=$(pwd)/peinstaller/pi3/gptpatch.img of="$DEVICE" conv=fsync || error "The 'dd' command failed to flash $(pwd)/peinstaller/pi3/gptpatch.img to $DEVICE"
 fi
 
 echo_white "Unmounting drive ${drive}"
