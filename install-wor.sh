@@ -401,7 +401,7 @@ if [ ! -d $(pwd)/driverpackage ];then
   echo
 fi
 
-if [ ! -d $(pwd)/uefipackage ] || [ "$(sha1sum "$(pwd)/uefipackage/RPi4_UEFI_Firmware_v1.30/bcm2711-rpi-4-b.dtb" 2>/dev/null)" == '664ef5ad68e1889f15695b0dbcede58a9568cdce' ];then
+#if [ ! -d $(pwd)/uefipackage ] || [ "$(sha1sum "$(pwd)/uefipackage/RPi4_UEFI_Firmware_v1.30/bcm2711-rpi-4-b.dtb" 2>/dev/null)" == '664ef5ad68e1889f15695b0dbcede58a9568cdce' ];then
   echo_white "Downloading UEFI package"
   #from: https://github.com/pftf/RPi4/releases
   #example download URL (will be outdated) https://github.com/pftf/RPi4/releases/download/v1.29/RPi4_UEFI_Firmware_v1.29.zip
@@ -409,13 +409,15 @@ if [ ! -d $(pwd)/uefipackage ] || [ "$(sha1sum "$(pwd)/uefipackage/RPi4_UEFI_Fir
   #determine latest release download URL:
   #URL="$(wget -qO- https://api.github.com/repos/pftf/RPi${RPI_MODEL}/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_UEFI_Firmware_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
   
+  rm -rf "$(pwd)/uefipackage" "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
+  
   #use the older version of UEFI so it is compatible with outdated RPi4 bootloaders
-  URL='https://github.com/pftf/RPi${RPI_MODEL}/releases/download/v1.28/RPi${RPI_MODEL}_UEFI_Firmware_v1.28.zip'
+  URL="https://github.com/pftf/RPi${RPI_MODEL}/releases/download/v1.28/RPi${RPI_MODEL}_UEFI_Firmware_v1.28.zip"
   wget -O "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" "$URL" || error "Failed to download UEFI package"
   unzip -q "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" -d uefipackage || error "The unzip command failed to extract $(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
   rm -f "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
   echo
-fi
+#fi
 
 #get UUPDump package
 #get other versions from: https://uupdump.net/
