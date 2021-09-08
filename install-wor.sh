@@ -385,6 +385,7 @@ if [ ! -f "$(pwd)/WoR-PE_Package.zip" ] || ! echo "$PE_INSTALLER_SHA256 $(pwd)/W
   
   rm -rf peinstaller
   unzip -q "$(pwd)/WoR-PE_Package.zip" -d peinstaller || error "The unzip command failed to extract $(pwd)/WoR-PE_Package.zip"
+  rm -f "$(pwd)/WoR-PE_Package.zip"
   echo
 fi
 
@@ -396,10 +397,11 @@ if [ ! -d $(pwd)/driverpackage ];then
   URL="$(wget -qO- https://api.github.com/repos/worproject/RPi-Windows-Drivers/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_Windows_ARM64_Drivers_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
   wget -O "$(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" "$URL" || error "Failed to download driver package"
   unzip -q "$(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" -d driverpackage || error "The unzip command failed to extract $(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
+  rm -f "$(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
   echo
 fi
 
-if [ ! -d $(pwd)/uefipackage ];then
+if [ ! -d $(pwd)/uefipackage ] || [ "$(sha1sum "$(pwd)/uefipackage/RPi4_UEFI_Firmware_v1.30/bcm2711-rpi-4-b.dtb" 2>/dev/null)" == '664ef5ad68e1889f15695b0dbcede58a9568cdce' ];then
   echo_white "Downloading UEFI package"
   #from: https://github.com/pftf/RPi4/releases
   #example download URL (will be outdated) https://github.com/pftf/RPi4/releases/download/v1.29/RPi4_UEFI_Firmware_v1.29.zip
@@ -408,9 +410,10 @@ if [ ! -d $(pwd)/uefipackage ];then
   #URL="$(wget -qO- https://api.github.com/repos/pftf/RPi${RPI_MODEL}/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_UEFI_Firmware_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
   
   #use the older version of UEFI so it is compatible with outdated RPi4 bootloaders
-  URL='https://github.com/pftf/RPi4/releases/download/v1.28/RPi4_UEFI_Firmware_v1.28.zip'
+  URL='https://github.com/pftf/RPi${RPI_MODEL}/releases/download/v1.28/RPi${RPI_MODEL}_UEFI_Firmware_v1.28.zip'
   wget -O "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" "$URL" || error "Failed to download UEFI package"
   unzip -q "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" -d uefipackage || error "The unzip command failed to extract $(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
+  rm -f "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
   echo
 fi
 
@@ -436,7 +439,7 @@ if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ] || [ "$(stat -c %s "$(pwd)/uupdump"/*AR
   rm -rf "$(pwd)/UUPDump_"*.ISO "$(pwd)/uupdump"
   wget -O "$(pwd)/uupdump.zip" "https://uupdump.net/get.php?id=${UUID}&pack=${WIN_LANG}&edition=professional&autodl=2" || error "Failed to download uupdump.zip"
   unzip -q "$(pwd)/uupdump.zip" -d "$(pwd)/uupdump" || error "Failed to extract $(pwd)/uupdump.zip"
-  rm "$(pwd)/uupdump.zip"
+  rm -f "$(pwd)/uupdump.zip"
   chmod +x "$(pwd)/uupdump/uup_download_linux.sh" || error "Failed to mark $(pwd)/UUPDump_22000/uup_download_linux.sh script as executable!"
   
   #add /usr/sbin to PATH variable so the chntpw command can be found
