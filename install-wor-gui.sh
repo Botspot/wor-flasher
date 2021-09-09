@@ -20,6 +20,24 @@ echo "DIRECTORY: $DIRECTORY"
 [ -z "$DL_DIR" ] && DL_DIR="$HOME/wor-flasher-files"
 echo "DL_DIR: $DL_DIR"
 
+if [ -z "$CONFIG_TXT" ];then
+  #if no user-supplied CONFIG_TXT variable, set it to initial value for yad to change later
+  CONFIG_TXT="
+
+# don't change anything below this point #
+arm_64bit=1
+enable_uart=1
+uart_2ndstage=1
+enable_gic=1
+armstub=RPI_EFI.fd
+disable_commandline_tags=1
+disable_overscan=1
+device_tree_address=0x1f0000
+device_tree_end=0x200000
+dtoverlay=miniuart-bt"
+  
+fi
+
 #this script and cli-based install-wor.sh should be in same directory.
 cli_script="$DIRECTORY/install-wor.sh"
 if [ ! -f "$cli_script" ];then
@@ -158,87 +176,186 @@ window_text="- Target drive: <b>$DEVICE</b> ($(lsblk -dno SIZE "$DEVICE")B $(get
 - Hardware type: <b>Raspberry Pi $RPI_MODEL</b>
 - Operating system: <b>$(get_os_name "$UUID" | sed "s/ build / ($WIN_LANG) arm64 build /g")</b>"
 
-if [ -f "$DL_DIR/uupdump"/*ARM64*.ISO ];then
-  existing_img_chk=(--field="A Windows image already exists. Check this box to rebuild it.":CHK FALSE)
-fi
+#by default, if a windows image exists, don't delete it to rebuild it
+rm_img=FALSE
 
-if [ -z "$CONFIG_TXT" ];then
-  #if no user-supplied CONFIG_TXT variable, set it to initial value for yad to change below
-  CONFIG_TXT="
-
-# don't change anything below this point #
-arm_64bit=1
-enable_uart=1
-uart_2ndstage=1
-enable_gic=1
-armstub=RPI_EFI.fd
-disable_commandline_tags=1
-disable_overscan=1
-device_tree_address=0x1f0000
-device_tree_end=0x200000
-dtoverlay=miniuart-bt"
-  
-fi
-
-CONFIG_TXT="$(yad "${yadflags[@]}" --width=500 --height=400 --image="$DIRECTORY/overview.png" --image-on-top \
-  --separator='\n' --form \
-  "${existing_img_chk[@]}" \
-  --field="$window_text":LBL '' \
-  --field="<b>Edit config.txt:</b>     <small>Want to overclock? <a href="\""file://${DIRECTORY}/config_txt_tips"\"">Click here</a></small>":TXT "$CONFIG_TXT" \
-  --field="<b>Warning!</b> All data on the target drive will be deleted!":LBL '' \
-  --button='<b>Flash</b>'!!"Warning! All data on the target drive will be deleted! Backup any files before it's too late!":0
-)"
-button=$?
-
-[ $button != 0 ] && error "User exited when reviewing information and customizing config.txt"
-
-if [ ! -z "$existing_img_chk" ];then #if user had the option to delete/retain pre-existing img file
-  
-  #if user checked the box, delete the image
-  if [ "$(echo "$CONFIG_TXT" | head -n1)" == TRUE ];then
-    echo "User checked the box to delete the pre-existing windows image."
-    rm -f "$DL_DIR/uupdump"/*ARM64*.ISO
+while true;do #repeat the Installation Overview window until Flash button clicked
+  if [ -f "$DL_DIR/uupdump"/*ARM64*.ISO ];then
+    existing_img_chk=(--field="A Windows image already exists. Check this box to rebuild it.":CHK "$rm_img")
   fi
   
-  #remove first line from yad output for CONFIG_TXT
-  CONFIG_TXT="$(echo -e "$CONFIG_TXT" | tail -n +2)"
+  output="$(yad "${yadflags[@]}" --width=500 --height=400 --image="$DIRECTORY/overview.png" --image-on-top \
+    --separator='\n' --form \
+    --field="$window_text":LBL '' \
+    "${existing_img_chk[@]}" \
+    --field="<b>Edit config.txt:</b>     <small>Want to overclock? <a href="\""file://${DIRECTORY}/config_txt_tips"\"">Click here</a></small>":TXT "$CONFIG_TXT" \
+    --field="<b>Warning!</b> All data on the target drive will be deleted!":LBL '' \
+    --button='<b>Advanced...</b>'!!"More settings, intended for the advanced user or for troubleshooting":2 \
+    --button='<b>Flash</b>'!!"Warning! All data on the target drive will be deleted! Backup any files before it's too late!":0
+  )"
+  button=$?
+  
+  #remove first line from yad output - remove newline from label field
+  output="$(echo -e "$output" | tail -n +2)"
+  
+  #if user had the option to rebuild img file
+  if [ ! -z "$existing_img_chk" ];then
+    if [ "$(echo "$output" | head -n1)" == TRUE ];then
+      rm_img=TRUE
+    else
+      rm_img=FALSE
+    fi
+    CONFIG_TXT="$(echo -e "$output" | tail -n +2)" #remove first line from yad output - remove newline from windows image checkbox field
+    
+  fi
+  
+  if [ $button == 0 ];then
+    #button: Flash
+    break
+  elif [ $button == 2 ];then
+    #button: Advanced options
+    
+    refresh_prompt=() #this variable is populated if the Advanced Options window is repeated, to let the user know why
+    
+    while true;do #repeat the advanced options window until the DL_DIR is not changed, or until Cancel is clicked
+      fields=()
+      #make entry for peinstaller
+      if [ -d "$DL_DIR/peinstaller" ];then
+        fields+=("--field=Check this box to re-download PE Installer":CHK 'FALSE')
+      else
+        fields+=("--field=Will download PE Installer":LBL '')
+      fi
+      fields+=("--field=            ($DL_DIR/peinstaller)":LBL '')
+      
+      #make entry for driverpackage
+      if [ -d "$DL_DIR/driverpackage" ];then
+        fields+=("--field=Check this box to re-download RPi Drivers":CHK 'FALSE')
+      else
+        fields+=("--field=Will download RPi Drivers":LBL '')
+      fi
+      fields+=("--field=            ($DL_DIR/driverpackage)":LBL '')
+      
+      #make entry for uefipackage
+      if [ -d "$DL_DIR/uefipackage" ];then
+        fields+=("--field=Check this box to re-download UEFI package":CHK 'FALSE')
+      else
+        fields+=("--field=Will download UEFI package":LBL '')
+      fi
+      fields+=("--field=            ($DL_DIR/uefipackage)":LBL '')
+      
+      #make entry for windows image
+      if [ -f "$DL_DIR/uupdump"/*ARM64*.ISO ];then
+        fields+=("--field=Check this box to rebuild Windows image":CHK 'FALSE')
+        fields+=("--field=(<small>$(echo "$DL_DIR"/uupdump/*ARM64*.ISO)</small>)":LBL '')
+      else
+        fields+=("--field=Will generate Windows image":LBL '')
+        fields+=("--field=(<small>$DL_DIR/uupdump/#####.####_PROFESSIONAL_ARM64_XX-XX.ISO</small>)":LBL '')
+      fi
+      
+      #make entry for dry run
+      fields+=("--field=Skip flashing the device (DRY_RUN)":CHK "$(echo "$DRY_RUN" | sed 's/1/TRUE/g' | sed 's/0/FALSE/g')")
+      
+      output="$(yad "${yadflags[@]}" --width=550 --image-on-top \
+        "${refresh_prompt[@]}" \
+        --separator='\n' --form \
+        --field="Working directory::DIR" "$DL_DIR" \
+        "${fields[@]}" \
+        --button="<b>Cancel</b>":1 --button="<b>OK</b>":0
+      )"
+      button=$?
+      
+      if [ "$button" == 0 ];then #everything in this if statement is skipped if Cancel is clicked
+        if [ "$DL_DIR" != "$(echo "$output" | sed -n 1p)" ];then
+          #DL_DIR was changed
+          DL_DIR="$(echo "$output" | sed -n 1p)"
+          echo "In the Advanced Options window, user changed DL_DIR to $DL_DIR"
+          
+          #explain to user why the Advanced Options window was refreshed when they clicked OK
+          refresh_prompt=("--text=<b>Note:</b> As you changed the working directory, this window has refreshed."$'\n'"Any previous checkbox values have been ignored.")
+          
+          #skipping the 'break' command to repeat the Advanced Options window
+          
+        else #if DL_DIR was not changed, then review the subsequent check-box values
+          #peinstaller
+          if [ "$(echo "$output" | sed -n 2p)" == TRUE ];then
+            echo "User checked the box to delete $DL_DIR/peinstaller"
+            rm -rf "$DL_DIR/peinstaller"
+          fi
+          #driverpackage
+          if [ "$(echo "$output" | sed -n 4p)" == TRUE ];then
+            echo "User checked the box to delete $DL_DIR/driverpackage"
+            rm -rf "$DL_DIR/driverpackage"
+          fi
+          #uefipackage
+          if [ "$(echo "$output" | sed -n 6p)" == TRUE ];then
+            echo "User checked the box to delete $DL_DIR/uefipackage"
+            rm -rf "$DL_DIR/uefipackage"
+          fi
+          #windows image
+          if [ "$(echo "$output" | sed -n 8p)" == TRUE ];then
+            echo "User checked the box to delete $(echo "$DL_DIR"/uupdump/*ARM64*.ISO)"
+            rm -f "$DL_DIR"/uupdump/*ARM64*.ISO
+            rm_img=FALSE #This "Advanced..." dialog just deleted the windows image, so no need for the var to remain 'TRUE' - remove unnecessary output when removing twice
+          fi
+          #DRY_RUN
+          if [ "$(echo "$output" | sed -n 10p)" == TRUE ] && [ "$DRY_RUN" == 0 ];then
+            echo "User checked the box to set DRY_RUN=1"
+            DRY_RUN=1
+          elif [ "$(echo "$output" | sed -n 10p)" == FALSE ] && [ "$DRY_RUN" == 1 ];then
+            echo "User checked the box to set DRY_RUN=0"
+            DRY_RUN=0
+          fi
+          #end of parsing check-box values for advanced options window
+          
+          break #as the DL_DIR value was not changed, go back to the Installation Overview window
+        fi
+        
+      else #button != 0
+        break #go back to Installation Overview
+      fi
+    done #end of repeating the advanced options window
+    
+  else
+    error "User exited when reviewing information and customizing config.txt"
+  fi
+  
+done
+
+#if user checked the box to rebuild the image, delete the image now
+if [ "$rm_img" == TRUE ];then
+  echo "User checked the box to delete the pre-existing windows image."
+  rm -f "$DL_DIR/uupdump"/*ARM64*.ISO
 fi
 
-#expand '\n' in yad output
-CONFIG_TXT="$(echo -e "$CONFIG_TXT")"
-
 #display multi-line CONFIG_TXT variable
-echo -e "CONFIG_TXT: ⤵\n$(echo "$CONFIG_TXT" | sed 's/^/  > /g')\nCONFIG_TXT: ⤴"
+echo -e "CONFIG_TXT: ⤵\n$(echo "$CONFIG_TXT" | sed 's/^/  > /g')\nCONFIG_TXT: ⤴\n"
 
 }
 
-#set to 'true' for a dry run
-if false;then
-  exit 0
-fi
-
 echo "Launching install-wor.sh in a separate terminal"
 
-#set this to false for a dry run.
-if true;then
-  #run the install-wor.sh script in a terminal. If it succeeds, the terminal closes automatically. If it fails, the terminal stays open forever until you close it.
-  "$DIRECTORY/terminal-run" "set -a
-  DL_DIR="\""$DL_DIR"\""
-  UUID="\""$UUID"\""
-  WIN_LANG="\""$WIN_LANG"\""
-  RPI_MODEL="\""$RPI_MODEL"\""
-  DEVICE="\""$DEVICE"\""
-  CAN_INSTALL_ON_SAME_DRIVE="\""$CAN_INSTALL_ON_SAME_DRIVE"\""
-  CONFIG_TXT="\""$CONFIG_TXT"\""
-  RUN_MODE=gui
-  DRY_RUN="\""$DRY_RUN"\""
-  $cli_script || sleep infinity" "Running $(basename "$cli_script")"
-fi
+#run the install-wor.sh script in a terminal. If it succeeds, the terminal closes automatically. If it fails, the terminal stays open forever until you close it.
+"$DIRECTORY/terminal-run" "set -a
+DL_DIR="\""$DL_DIR"\""
+UUID="\""$UUID"\""
+WIN_LANG="\""$WIN_LANG"\""
+RPI_MODEL="\""$RPI_MODEL"\""
+DEVICE="\""$DEVICE"\""
+CAN_INSTALL_ON_SAME_DRIVE="\""$CAN_INSTALL_ON_SAME_DRIVE"\""
+CONFIG_TXT="\""$CONFIG_TXT"\""
+RUN_MODE=gui
+DRY_RUN="\""$DRY_RUN"\""
+$cli_script
+if [ "\$"? == 0 ];then
+  #display 'next steps' window
+  yad --center --window-icon="\""$DIRECTORY/logo.png"\"" --title='Windows on Raspberry' \
+    --image="\""${DIRECTORY}/next-steps.png"\"" --button=Close:0
+else
+  sleep infinity
+fi" "Running $(basename "$cli_script")"
+
 echo "The terminal running install-wor.sh has been closed."
 
-#display "next steps" window
-yad "${yadflags[@]}" --image="${DIRECTORY}/next-steps.png" \
-  --button=Close:0
 
 
 
