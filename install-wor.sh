@@ -272,7 +272,7 @@ if [ -z "$RPI_MODEL" ];then
   while true; do
     echo -ne "Choose Raspberry Pi model to deploy Windows on:
 \e[97m\e[1m1\e[0m) Raspberry Pi 4 / 400
-\e[97m\e[1m2\e[0m) Raspberry Pi 2 rev 1.2 / 3 / CM3
+\e[97m\e[1m2\e[0m) Raspberry Pi 3 or Pi2 v1.2
 Enter \e[97m\e[1m1\e[0m or \e[97m\e[1m2\e[0m: "
     read REPLY
     case $REPLY in
@@ -425,10 +425,6 @@ if [ ! -d "$(pwd)/uefipackage" ];then
   #determine latest release download URL:
   URL="$(wget -qO- https://api.github.com/repos/pftf/RPi${RPI_MODEL}/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_UEFI_Firmware_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
   
-  #use an older UEFI version so it is compatible with outdated RPi4 bootloaders
-  if [ "$RPI_MODEL" == 4 ];then
-    URL="https://github.com/pftf/RPi4/releases/download/v1.28/RPi4_UEFI_Firmware_v1.28.zip"
-  fi
   wget -O "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" "$URL" || error "Failed to download UEFI package"
   
   rm -rf "$(pwd)/uefipackage"
