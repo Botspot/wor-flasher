@@ -367,41 +367,56 @@ if df -T "$DL_DIR" | grep -q 'fat' ;then
   error "The $DL_DIR directory is on a FAT32/FAT16/vfat partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 4.3GB.\nPlease format $DL_DIR to use an Ext4 partition."
 fi
 
-PE_INSTALLER_SHA256=$(wget -qO- http://worproject.ml/dldserv/worpe/gethashlatest.php | cut -d ':' -f2)
-[ -z "$PE_INSTALLER_SHA256" ] && error "Failed to determine a hashsum for WoR PE-based installer.\nURL: http://worproject.ml/dldserv/worpe/gethashlatest.php"
-if [ ! -f "$(pwd)/WoR-PE_Package.zip" ] || ! echo "$PE_INSTALLER_SHA256 $(pwd)/WoR-PE_Package.zip" | sha256sum -c ;then
+if [ ! -d "$(pwd)/peinstaller" ];then
   echo_white "Downloading WoR PE-based installer from Google Drive"
+  
+  PE_INSTALLER_SHA256=$(wget -qO- http://worproject.ml/dldserv/worpe/gethashlatest.php | cut -d ':' -f2)
+  [ -z "$PE_INSTALLER_SHA256" ] && error "Failed to determine a hashsum for WoR PE-based installer.\nURL: http://worproject.ml/dldserv/worpe/gethashlatest.php"
+  
   #from: https://worproject.ml/downloads#windows-on-raspberry-pe-based-installer
   URL='http://worproject.ml/dldserv/worpe/downloadlatest.php'
   #determine Google Drive FILEUUID from given redirect URL
   FILEUUID="$(wget --spider --content-disposition --trust-server-names -O /dev/null "$URL" 2>&1 | grep Location | sed 's/^Location: //g' | sed 's/ \[following\]$//g' | grep 'drive\.google\.com' | sed 's+.*/++g' | sed 's/.*&id=//g')"
   download_from_gdrive "$FILEUUID" "$(pwd)/WoR-PE_Package.zip" || error "Failed to download Windows on Raspberry PE-based installer"
   
-  echo "$PE_INSTALLER_SHA256 $(pwd)/WoR-PE_Package.zip" | sha256sum -c &>/dev/null
-  if [ $? != 0 ];then
-    rm -f "$(pwd)/WoR-PE_Package.zip"
+  if [ "$PE_INSTALLER_SHA256" != "$(sha256sum "$(pwd)/WoR-PE_Package.zip" | awk '{print $1}' | tr '[a-z]' '[A-Z]')" ];then
     error "PE-based installer integrity check failed"
   fi
   
-  rm -rf peinstaller
-  unzip -q "$(pwd)/WoR-PE_Package.zip" -d peinstaller || error "The unzip command failed to extract $(pwd)/WoR-PE_Package.zip"
+  rm -rf "$(pwd)/peinstaller"
+  unzip -q "$(pwd)/WoR-PE_Package.zip" -d "$(pwd)/peinstaller"
+  if [ $? != 0 ];then
+    rm -rf "$(pwd)/peinstaller"
+    error "The unzip command failed to extract $(pwd)/WoR-PE_Package.zip"
+  fi
   rm -f "$(pwd)/WoR-PE_Package.zip"
   echo
+else
+  echo "Not downloading $(pwd)/peinstaller - folder exists"
 fi
 
-if [ ! -d $(pwd)/driverpackage ];then
+if [ ! -d "$(pwd)/driverpackage" ];then
   echo_white "Downloading driver package"
   #from: https://github.com/worproject/RPi-Windows-Drivers/releases
   #example download URL (will be outdated) https://github.com/worproject/RPi-Windows-Drivers/releases/download/v0.11/RPi4_Windows_ARM64_Drivers_v0.11.zip
   #determine latest release download URL:
   URL="$(wget -qO- https://api.github.com/repos/worproject/RPi-Windows-Drivers/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_Windows_ARM64_Drivers_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
   wget -O "$(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" "$URL" || error "Failed to download driver package"
-  unzip -q "$(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" -d driverpackage || error "The unzip command failed to extract $(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
+  
+  rm -rf "$(pwd)/driverpackage"
+  unzip -q "$(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" -d "$(pwd)/driverpackage"
+  if [ $? != 0 ];then
+    rm -rf "$(pwd)/driverpackage"
+    error "The unzip command failed to extract $(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
+  fi
+  
   rm -f "$(pwd)/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
   echo
+else
+  echo "Not downloading $(pwd)/driverpackage - folder exists"
 fi
 
-#if [ ! -d $(pwd)/uefipackage ];then
+if [ ! -d "$(pwd)/uefipackage" ];then
   echo_white "Downloading UEFI package"
   rm -rf "$(pwd)/uefipackage" "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
   #from: https://github.com/pftf/RPi4/releases
@@ -415,14 +430,23 @@ fi
     URL="https://github.com/pftf/RPi4/releases/download/v1.28/RPi4_UEFI_Firmware_v1.28.zip"
   fi
   wget -O "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" "$URL" || error "Failed to download UEFI package"
-  unzip -q "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" -d uefipackage || error "The unzip command failed to extract $(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
+  
+  rm -rf "$(pwd)/uefipackage"
+  unzip -q "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" -d "$(pwd)/uefipackage"
+  if [ $? != 0 ];then
+    rm -rf "$(pwd)/uefipackage"
+    error "The unzip command failed to extract $(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
+  fi
+  
   rm -f "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip"
   echo
-#fi
+else
+  echo "Not downloading $(pwd)/uefipackage - folder exists"
+fi
 
 #get UUPDump package
 #get other versions from: https://uupdump.net/
-if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ] || [ "$(stat -c %s "$(pwd)/uupdump"/*ARM64*.ISO)" -le 4300000000 ];then
+if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ] || [ "$(stat -c %s "$(pwd)/uupdump"/*ARM64*.ISO)" -le 4100000000 ];then
   if [ "$(get_space_free "$DL_DIR")" -lt 11863226125 ];then
     error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n11.8GB is necessary."
   fi
@@ -439,18 +463,17 @@ if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ] || [ "$(stat -c %s "$(pwd)/uupdump"/*AR
     [ -z "$UUID" ] && error "Failed to determine Windows build ID from parsing uupdump.net HTML!"
   fi
   
-  rm -rf "$(pwd)/UUPDump_"*.ISO "$(pwd)/uupdump"
+  rm -rf "$(pwd)/uupdump"
   wget -O "$(pwd)/uupdump.zip" "https://uupdump.net/get.php?id=${UUID}&pack=${WIN_LANG}&edition=professional&autodl=2" || error "Failed to download uupdump.zip"
   unzip -q "$(pwd)/uupdump.zip" -d "$(pwd)/uupdump" || error "Failed to extract $(pwd)/uupdump.zip"
   rm -f "$(pwd)/uupdump.zip"
   chmod +x "$(pwd)/uupdump/uup_download_linux.sh" || error "Failed to mark $(pwd)/UUPDump_22000/uup_download_linux.sh script as executable!"
   
   #add /usr/sbin to PATH variable so the chntpw command can be found
-  set -a #export all variables so the script can see them
   PATH="$(echo "${PATH}:/usr/sbin" | tr ':' '\n' | sort | uniq | tr '\n' ':')"
   
-  echo_white "Generating Windows image with uupdump"
   #run uup_download_linux.sh
+  echo_white "Generating Windows image with uupdump"
   prepwd="$(pwd)"
   cd "$(pwd)/uupdump"
   #Allow uupdump to fail 4 times before giving up
@@ -534,14 +557,14 @@ fi
 
 echo_white "Copying files from image to device:"
 echo "  - Boot files"
-sudo cp -r $(pwd)/isomount/boot "$mntpnt"/bootpart || error "Failed to copy $(pwd)/isomount/boot to $mntpnt/bootpart"
+sudo cp -r "$(pwd)/isomount/boot" "$mntpnt"/bootpart || error "Failed to copy $(pwd)/isomount/boot to $mntpnt/bootpart"
 echo "  - EFI files"
-sudo cp -r $(pwd)/isomount/efi "$mntpnt"/bootpart || error "Failed to copy $(pwd)/isomount/efi to $mntpnt/bootpart"
+sudo cp -r "$(pwd)/isomount/efi" "$mntpnt"/bootpart || error "Failed to copy $(pwd)/isomount/efi to $mntpnt/bootpart"
 sudo mkdir -p "$mntpnt"/bootpart/sources || error "Failed to make folder: $mntpnt/bootpart/sources"
 echo "  - boot.wim"
-sudo cp $(pwd)/isomount/sources/boot.wim "$mntpnt"/bootpart/sources || error "Failed to copy $(pwd)/isomount/sources/boot.wim to $mntpnt/bootpart/sources"
+sudo cp "$(pwd)/isomount/sources/boot.wim" "$mntpnt"/bootpart/sources || error "Failed to copy $(pwd)/isomount/sources/boot.wim to $mntpnt/bootpart/sources"
 echo "  - install.wim"
-sudo cp $(pwd)/isomount/sources/install.wim "$mntpnt"/winpart || error "Failed to copy $(pwd)/isomount/sources/install.wim to $mntpnt/winpart"
+sudo cp "$(pwd)/isomount/sources/install.wim" "$mntpnt"/winpart || error "Failed to copy $(pwd)/isomount/sources/install.wim to $mntpnt/winpart"
 
 echo_white "Unmounting image"
 sudo umount "$(pwd)/isomount" || echo_white "Warning: failed to unmount $(pwd)/isomount" #failure is non-fatal
