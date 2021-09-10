@@ -525,20 +525,25 @@ else
 fi
 sudo parted -s "$DEVICE" set 2 msftdata on || error "Failed to enable msftdata flag on $DEVICE partition 2"
 sync
+
 echo_white "Generating filesystems"
-sudo mkfs.fat -F 32 "$(get_partition "$DEVICE" 1)" || error "Failed to create FAT partition on $(get_partition "$DEVICE" 1) (partition 1 of ${DEVICE})"
-sudo mkfs.exfat "$(get_partition "$DEVICE" 2)" || error "Failed to create EXFAT partition on $(get_partition "$DEVICE" 2) (partition 2 of ${DEVICE})"
+PART1="$(get_partition "$DEVICE" 1)"
+PART2="$(get_partition "$DEVICE" 2)"
+echo "In $DEVICE, partition 1: $PART1, Partition 2: $PART2"
+
+sudo mkfs.fat -F 32 "$PART1" || error "Failed to create FAT partition on $PART1 (partition 1 of ${DEVICE})"
+sudo mkfs.exfat "$PART2" || error "Failed to create EXFAT partition on $PART2 (partition 2 of ${DEVICE})"
 
 mntpnt="/media/$USER/WOR-installer"
 echo_white "Mounting ${DEVICE} device to $mntpnt"
 sudo mkdir -p "$mntpnt"/bootpart || error "Failed to create mountpoint: $mntpnt/bootpart"
 sudo mkdir -p "$mntpnt"/winpart || error "Failed to create mountpoint: $mntpnt/winpart"
-sudo mount "$(get_partition "$DEVICE" 1)" "$mntpnt"/bootpart || error "Failed to mount $(get_partition "$DEVICE" 1) to $mntpnt/bootpart"
-sudo mount "$(get_partition "$DEVICE" 2)" "$mntpnt"/winpart
+sudo mount "$PART1" "$mntpnt"/bootpart || error "Failed to mount $PART1 to $mntpnt/bootpart"
+sudo mount "$PART2" "$mntpnt"/winpart
 if [ $? != 0 ];then
-  echo_white "Failed to mount $(get_partition "$DEVICE" 2). Trying again after loading the 'fuse' kernel module."
+  echo_white "Failed to mount $PART2. Trying again after loading the 'fuse' kernel module."
   sudo modprobe fuse
-  sudo mount "$(get_partition "$DEVICE" 2)" "$mntpnt"/winpart || error "Failed to mount $(get_partition "$DEVICE" 2) to $mntpnt/winpart"
+  sudo mount "$PART2" "$mntpnt"/winpart || error "Failed to mount $PART2 to $mntpnt/winpart"
 fi
 
 echo_white "Mounting image"
