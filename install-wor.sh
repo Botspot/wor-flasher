@@ -529,7 +529,7 @@ sync
 echo_white "Generating filesystems"
 PART1="$(get_partition "$DEVICE" 1)"
 PART2="$(get_partition "$DEVICE" 2)"
-echo "In $DEVICE, partition 1: $PART1, Partition 2: $PART2"
+echo "Partition 1: $PART1, Partition 2: $PART2"
 
 sudo mkfs.fat -F 32 "$PART1" || error "Failed to create FAT partition on $PART1 (partition 1 of ${DEVICE})"
 sudo mkfs.exfat "$PART2" || error "Failed to create EXFAT partition on $PART2 (partition 2 of ${DEVICE})"
@@ -590,8 +590,9 @@ if [ $RPI_MODEL == 3 ];then
   sudo dd if=$(pwd)/peinstaller/pi3/gptpatch.img of="$DEVICE" conv=fsync || error "The 'dd' command failed to flash $(pwd)/peinstaller/pi3/gptpatch.img to $DEVICE"
 fi
 
-echo_white "Unmounting drive ${drive}"
+echo_white "Ejecting drive ${drive}"
 sync
-sudo umount -q $(get_partition "$DEVICE" all) || echo_white "Warning: the umount command failed to unmount all partitions within $DEVICE"
-sudo rm -rf "$mntpnt" || echo_white "Warning: Failed to remove the mountpoint folder: $mntpnt"
+sudo umount -q "$PART1" "$PART2" || echo_white "Warning: the umount command failed to unmount all partitions within $DEVICE"
+sudo eject "$DEVICE" || echo_white "Warning: the eject command failed to eject $DEVICE"
+sudo rmdir "$mntpnt" || echo_white "Warning: Failed to remove the mountpoint folder: $mntpnt"
 echo_white "$(basename "$0") script has completed."
