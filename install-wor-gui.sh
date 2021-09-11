@@ -58,7 +58,7 @@ if [ -z "$RPI_MODEL" ] || [ -z "$UUID" ];then
     --image="$DIRECTORY/logo-full.png" \
     --text=$'<big><b>Welcome to Windows on Raspberry!</b></big>\nThis wizard will help you easily install the full desktop version of Windows on your Raspberry Pi computer.' \
     --field="Install":CB "Windows 11!Windows 10!Custom" \
-    --field="on a":CB "Pi4/Pi400!Pi3/Pi2_v1.2/CM3" \
+    --field="on a":CB "Pi4/Pi400!Pi3/Pi2_v1.2" \
     --button='<b>Next</b>':0)"
   button=$?
   [ $button != 0 ] && error "User exited when choosing windows version and RPi model"
@@ -205,9 +205,9 @@ while true;do #repeat the Installation Overview window until Flash button clicke
     else
       rm_img=FALSE
     fi
-    CONFIG_TXT="$(echo -e "$output" | tail -n +2)" #remove first line from yad output - remove newline from windows image checkbox field
-    
+    output="$(echo -e "$output" | tail -n +2)" #remove first line from yad output - remove newline from windows image checkbox field
   fi
+  CONFIG_TXT="$output"
   
   if [ $button == 0 ];then
     #button: Flash
