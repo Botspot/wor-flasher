@@ -64,7 +64,7 @@ if [ -z "$RPI_MODEL" ] || [ -z "$UUID" ];then
   [ $button != 0 ] && error "User exited when choosing windows version and RPi model"
   
   WINDOWS_VER="$(echo "$output" | sed -n 1p)"
-  RPI_MODEL="$(echo "$output" | sed -n 2p | sed 's+Pi4/Pi400+4+g' | sed 's+Pi3/Pi2_v1.2/CM3+3+g')"
+  RPI_MODEL="$(echo "$output" | sed -n 2p | sed 's+Pi4/Pi400+4+g' | sed 's+Pi3/Pi2_v1.2+3+g')"
   
   if [ "$WINDOWS_VER" == 'Windows 11' ];then
     UUID="$(get_uuid 11)"
