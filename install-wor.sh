@@ -367,6 +367,14 @@ if df -T "$DL_DIR" | grep -q 'fat' ;then
   error "The $DL_DIR directory is on a FAT32/FAT16/vfat partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 4.3GB.\nPlease format $DL_DIR to use an Ext4 partition."
 fi
 
+#Make sure modules for running kernel exist - otherwise a kernel upgrade occurred and the user needs to reboot. See https://github.com/Botspot/wor-flasher/issues/35
+if [ ! -d /lib/modules/$(uname -r) ];then
+  error "The running kernel ($(uname -r)) does not match any directory in /lib/modules.
+Usually this means you have not yet rebooted since upgrading the kernel.
+Try rebooting.
+If this error persists, contact Botspot - the WoR-flasher developer."
+fi
+
 if [ ! -d "$(pwd)/peinstaller" ];then
   echo_white "Downloading WoR PE-based installer from Google Drive"
   
