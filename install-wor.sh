@@ -182,11 +182,40 @@ get_os_name() { #input: build id Output: human-readable name of operating system
   echo -e "$version build $build"
 }
 
+{ #run safety checks
 #check for internet connection
 wget_errors="$(wget --spider github.com 2>&1)"
 if [ $? != 0 ];then
   error "No internet connection!\ngithub.com failed to respond.\nErrors: $wget_errors"
 fi
+
+if [ "$(id -u)" == 0 ];then
+  echo_white "WoR-flasher is not designed to be run as root.\nDoing so is known to cause problems."
+  echo -n "Are you sure you want to continue? [y/N]"
+  read answer
+  echo "$answer"
+  if [ -z "$answer" ] || [ "$answer" != y ];then
+    exit 1
+  fi
+  for i in {60..0}; do
+    echo -ne "You have $i seconds to reconsider your decision.\033[0K\r"
+    sleep 1
+  done
+fi
+
+#Make sure that DL_DIR is not set to a drive with a FAT-type partition
+if df -T "$DL_DIR" | grep -q 'fat' ;then
+  error "The $DL_DIR directory is on a FAT32/FAT16/vfat partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 4.3GB.\nPlease format $DL_DIR to use an Ext4 partition."
+fi
+
+#Make sure modules exist for the running kernel - otherwise a kernel upgrade occurred and the user needs to reboot. See https://github.com/Botspot/wor-flasher/issues/35
+if [ ! -d /lib/modules/$(uname -r) ];then
+  error "The running kernel ($(uname -r)) does not match any directory in /lib/modules.
+Usually this means you have not yet rebooted since upgrading the kernel.
+Try rebooting.
+If this error persists, contact Botspot - the WoR-flasher developer."
+fi
+}
 
 [ "$1" == 'source' ] && return 0 #If being sourced, exit here at this point in the script
 #past this point, this script is being run, not sourced.
@@ -361,19 +390,6 @@ $(echo "$CONFIG_TXT" | grep . | sed 's/^/  > /g')
 CONFIG_TXT: ⤴"
 [ ! -z "$DRY_RUN" ] && echo "DRY_RUN: $DRY_RUN"
 echo
-
-#Make sure that DL_DIR is not set to a drive with a FAT-type partition
-if df -T "$DL_DIR" | grep -q 'fat' ;then
-  error "The $DL_DIR directory is on a FAT32/FAT16/vfat partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 4.3GB.\nPlease format $DL_DIR to use an Ext4 partition."
-fi
-
-#Make sure modules for running kernel exist - otherwise a kernel upgrade occurred and the user needs to reboot. See https://github.com/Botspot/wor-flasher/issues/35
-if [ ! -d /lib/modules/$(uname -r) ];then
-  error "The running kernel ($(uname -r)) does not match any directory in /lib/modules.
-Usually this means you have not yet rebooted since upgrading the kernel.
-Try rebooting.
-If this error persists, contact Botspot - the WoR-flasher developer."
-fi
 
 if [ ! -d "$(pwd)/peinstaller" ];then
   echo_white "Downloading WoR PE-based installer from Google Drive"
@@ -602,5 +618,5 @@ echo_white "Ejecting drive ${drive}"
 sync
 sudo umount -q "$PART1" "$PART2" || echo_white "Warning: the umount command failed to unmount all partitions within $DEVICE"
 sudo eject "$DEVICE" || echo_white "Warning: the eject command failed to eject $DEVICE"
-sudo rmdir "$mntpnt" || echo_white "Warning: Failed to remove the mountpoint folder: $mntpnt"
+sudo rmdir "$mntpnt"/bootpart "$mntpnt"/winpart || echo_white "Warning: Failed to remove the mountpoint folder: $mntpnt"
 echo_white "$(basename "$0") script has completed."
