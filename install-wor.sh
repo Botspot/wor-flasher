@@ -141,7 +141,7 @@ get_space_free() { #Input: folder to check. Output: show many bytes can fit befo
 
 list_devs() { #Output: human-readable, colorized list of valid block devices to write to. Omits /dev/loop* and the root device
   local IFS=$'\n'
-  for device in $(lsblk -I 8,179 -dno PATH | grep -v loop | grep -vx "$ROOT_DEV") ;do
+  for device in $(lsblk -I 8,179,259 -dno PATH | grep -v loop | grep -vx "$ROOT_DEV") ;do
     echo -e "\e[1m\e[97m${device}\e[0m - \e[92m$(lsblk -dno SIZE "$device")B\e[0m - \e[36m$(get_name "$device")\e[0m"
   done
 }
