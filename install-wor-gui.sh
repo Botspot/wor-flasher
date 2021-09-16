@@ -122,7 +122,7 @@ if [ -z "$DEVICE" ];then
   while [ -z "$DEVICE" ] || [ ! -b "$DEVICE" ];do
     IFS=$'\n'
     DEV_LIST=''
-    for device in $(lsblk -I 8,179 -dno PATH | grep -v loop | grep -vx "$ROOT_DEV") ;do
+    for device in $(lsblk -I 8,179,259 -dno PATH | grep -v loop | grep -vx "$ROOT_DEV") ;do
       DEV_LIST="$DEV_LIST
 FALSE
 ${device}
