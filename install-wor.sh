@@ -448,6 +448,7 @@ if [ ! -d "$(pwd)/uefipackage" ];then
   
   #determine latest release download URL:
   URL="$(wget -qO- https://api.github.com/repos/pftf/RPi${RPI_MODEL}/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_UEFI_Firmware_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
+  #URL='https://github.com/pftf/RPi4/releases/download/v1.28/RPi4_UEFI_Firmware_v1.28.zip'
   
   wget -O "$(pwd)/RPi${RPI_MODEL}_UEFI_Firmware.zip" "$URL" || error "Failed to download UEFI package"
   
@@ -466,7 +467,7 @@ fi
 
 #get UUPDump package
 #get other versions from: https://uupdump.net/
-if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ] || [ "$(stat -c %s "$(pwd)/uupdump"/*ARM64*.ISO)" -le 4100000000 ];then
+if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
   if [ "$(get_space_free "$DL_DIR")" -lt 11863226125 ];then
     error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n11.8GB is necessary."
   fi
@@ -506,6 +507,7 @@ if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ] || [ "$(stat -c %s "$(pwd)/uupdump"/*AR
     else
       echo_white "\nuup_download_linux.sh failed, most likely due to unreliable Internet.\nTrying again in 1 minute. (Attempt $i of 4)"
       uup_failed=1
+      rm -rf "$(pwd)/uupdump"
       sleep 60
     fi
   done
@@ -513,7 +515,6 @@ if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ] || [ "$(stat -c %s "$(pwd)/uupdump"/*AR
   
   #check that the ISO file really does exist and filename includes 'ARM64'
   if [ "$uup_failed" == 1 ];then
-    rm -f "$(pwd)/uupdump"/*ARM64*.ISO
     error "Failed to generate a Windows ISO! uup_download_linux.sh exited with an error so please see the errors above."
   elif [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
     error "Failed to generate a Windows ISO! uup_download_linux.sh did not exit with an error, but there is no file matching "\""$(pwd)/uupdump/*ARM64*.ISO"\"""
@@ -563,11 +564,11 @@ echo_white "Mounting ${DEVICE} device to $mntpnt"
 sudo mkdir -p "$mntpnt"/bootpart || error "Failed to create mountpoint: $mntpnt/bootpart"
 sudo mkdir -p "$mntpnt"/winpart || error "Failed to create mountpoint: $mntpnt/winpart"
 sudo mount "$PART1" "$mntpnt"/bootpart || error "Failed to mount $PART1 to $mntpnt/bootpart"
-sudo mount "$PART2" "$mntpnt"/winpart
+sudo mount.exfat-fuse "$PART2" "$mntpnt"/winpart
 if [ $? != 0 ];then
   echo_white "Failed to mount $PART2. Trying again after loading the 'fuse' kernel module."
   sudo modprobe fuse
-  sudo mount "$PART2" "$mntpnt"/winpart || error "Failed to mount $PART2 to $mntpnt/winpart"
+  sudo mount.exfat-fuse "$PART2" "$mntpnt"/winpart || error "Failed to mount $PART2 to $mntpnt/winpart"
 fi
 
 echo_white "Mounting image"
@@ -616,7 +617,7 @@ fi
 
 echo_white "Ejecting drive ${drive}"
 sync
-sudo umount -q "$PART1" "$PART2" || echo_white "Warning: the umount command failed to unmount all partitions within $DEVICE"
-sudo eject "$DEVICE" || echo_white "Warning: the eject command failed to eject $DEVICE"
+sudo umount "$PART1" "$PART2" || echo_white "Warning: the umount command failed to unmount all partitions within $DEVICE"
+sudo eject "$DEVICE" &>/dev/null
 sudo rmdir "$mntpnt"/bootpart "$mntpnt"/winpart || echo_white "Warning: Failed to remove the mountpoint folder: $mntpnt"
 echo_white "$(basename "$0") script has completed."
