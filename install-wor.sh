@@ -148,7 +148,10 @@ list_devs() { #Output: human-readable, colorized list of valid block devices to 
 
 get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2ef109396b00'
   if [ "$1" == 11 ];then
-    wget -qO- 'https://uupdump.net/fetchupd.php?arch=arm64&ring=wif&build=latest' | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
+    #wget -qO- 'https://uupdump.net/fetchupd.php?arch=arm64&ring=wif&build=latest' | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
+    
+    #Use an older version of Windows 11 to fix issue https://github.com/Botspot/wor-flasher/issues/41 until uupdump solves the problem on their end.
+    echo 'd0a7e04d-5f20-4cf8-97ee-895fe957174d'
   elif [ "$1" == 10 ];then
     wget -qO- "https://uupdump.net/fetchupd.php?arch=arm64&ring=retail&build=19042.330" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
   else
@@ -468,21 +471,12 @@ fi
 #get UUPDump package
 #get other versions from: https://uupdump.net/
 if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
+  sync
   if [ "$(get_space_free "$DL_DIR")" -lt 11863226125 ];then
     error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n11.8GB is necessary."
   fi
   
   echo_white "Downloading uupdump script to legally generate Windows ISO"
-  
-  if [ -z "$UUID" ];then
-    echo_white "Determining latest Windows build UUID"
-    if [ "$WINDOWS_VER" == 11 ];then
-      UUID="$(wget -qO- 'https://uupdump.net/fetchupd.php?arch=arm64&ring=wif&build=latest' | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1)"
-    elif [ "$WINDOWS_VER" == 10 ];then
-      UUID="$(wget -qO- "https://uupdump.net/fetchupd.php?arch=arm64&ring=retail&build=19042.330" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1)"
-    fi
-    [ -z "$UUID" ] && error "Failed to determine Windows build ID from parsing uupdump.net HTML!"
-  fi
   
   rm -rf "$(pwd)/uupdump"
   wget -O "$(pwd)/uupdump.zip" "https://uupdump.net/get.php?id=${UUID}&pack=${WIN_LANG}&edition=professional&autodl=2" || error "Failed to download uupdump.zip"
