@@ -36,7 +36,7 @@ if [ -e "$DIRECTORY" ] && [ ! -f "${DIRECTORY}/no-update" ];then
     echo_white "Auto-updating wor-flasher for the latest features and improvements..."
     echo_white "To disable this next time, create a file at ${DIRECTORY}/no-update"
     sleep 1
-    git pull
+    git pull | cat
     
     echo_white "git pull finished. Reloading script..."
     set -a #export all variables so the script can see them
@@ -473,7 +473,9 @@ fi
 if [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
   sync
   if [ "$(get_space_free "$DL_DIR")" -lt 11863226125 ];then
-    error "Your system does not have enough usable disk space to generate a Windows image.\nPlease free up space or set the DL_DIR variable to a drive with more capacity.\n11.8GB is necessary."
+    error "Your system needs 11.8GB of free space to download the Windows components to.
+If your sd card is too small to do this, you can set the DL_DIR variable
+to a mounted drive with sufficient space. (Must be an Ext4 partition)"
   fi
   
   echo_white "Downloading uupdump script to legally generate Windows ISO"
