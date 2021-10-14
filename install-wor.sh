@@ -10,7 +10,7 @@ error() { #Input: error message
 }
 
 echo_white() {
-  echo -e "\e[97m${1}\e[39m"
+  echo -e "\e[40m\e[97m${1}\e[39m\e[49m"
 }
 
 #Determine the directory to download windows component files to
