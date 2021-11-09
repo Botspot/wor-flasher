@@ -11,7 +11,7 @@ Now, using the new WoR-flasher, it's a *piece of cake*.
 - Need help using the WoR-flasher tool? You can [open an issue](https://github.com/Botspot/wor-flasher/issues/new/choose) or ask for help in [the Botspot Software discord server](https://discord.gg/RXSTvaUvuu).
 - Need help using Windows on Raspberry (The operating system)? Contact the WoR developers [through email](https://worproject.ml/contact) or [join their Discord server](https://discord.gg/worofficial).
 - By default, WoR will limit your usable RAM to 3GB due to a complication in the Pi4's CPU design. There is a workaround, but it's not the default. [Click here for details](https://worproject.ml/faq#only-3-gb-of-ram-are-available-how-can-i-fix-this)
-- WoR does not currently support WiFi. The necessary drivers simply do not exist. (yet) See [this page](https://worproject.ml/faq#usb-wi-fi-drivers) for more details.
+- WoR does not currently support WiFi. The necessary drivers simply do not exist. (yet) See [this page](https://github.com/worproject/RPi-Windows-Drivers) for current driver status.
 - You won't be able to debloat the OS because the Wine tool is unable to run NTLite. Performance is about the same, debloated or not, but there will be extra apps you'll have to manually remove if you wish to remove the extra preinstalled apps.
 
 ## WoR-flasher walkthrough
