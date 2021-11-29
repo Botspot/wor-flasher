@@ -151,7 +151,7 @@ get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2
     #wget -qO- 'https://uupdump.net/fetchupd.php?arch=arm64&ring=wif&build=latest' | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
     
     #Use an older version of Windows 11 to fix issue https://github.com/Botspot/wor-flasher/issues/41 until uupdump solves the problem on their end.
-    echo 'd0a7e04d-5f20-4cf8-97ee-895fe957174d'
+    echo 'fdb8a3c7-e28d-48e2-80fa-54673f5786ee'
   elif [ "$1" == 10 ];then
     wget -qO- "https://uupdump.net/fetchupd.php?arch=arm64&ring=retail&build=19042.330" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
   else
