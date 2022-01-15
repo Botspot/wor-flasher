@@ -97,7 +97,7 @@ The `install-wor.sh` script is designed to be used within other, larger bash scr
 - `DL_DIR`: Set this variable to change the default download location. By default, it's `~/wor-flasher-files`.
 - `UUID`: Set this variable to choose an exact Windows update ID. Example value: "`db8ec987-d136-4421-afb8-2ef109396b00`". When this variable is set, `install-wor.sh` will not ask the user which Windows version to use.
 - `WIN_LANG`: Set this variable to choose a language for the Windows image. Example value: "`en-us`". When this variable is set, `install-wor.sh` will not ask the user which language to use.
-- `RPi_MODEL`: Set this variable to choose Raspberry Pi model. Allowed values: "`3`", "`4`". When this variable is set, `install-wor.sh` will not ask the user which Raspberry Pi model to use.
+- `RPI_MODEL`: Set this variable to choose Raspberry Pi model. Allowed values: "`3`", "`4`". When this variable is set, `install-wor.sh` will not ask the user which Raspberry Pi model to use.
 - `DEVICE`: Set this variable to the device you want to flash. Example value: "`/dev/sda`" When this variable is set, `install-wor.sh` will not ask the user which device to use.
 - `CAN_INSTALL_ON_SAME_DRIVE`: Set this variable to "`1`" if the device is larger than 25GB and you wish to install Windows on itself. Otherwise, set it to "`0`".
 - `CONFIG_TXT`: Set this variable to customize the `/boot/config.txt` of the resulting drive. This is commonly used for overclocking or to change HDMI settings. [This is the default value.](https://github.com/pftf/RPi4/blob/master/config.txt)
