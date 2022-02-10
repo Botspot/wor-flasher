@@ -141,7 +141,7 @@ get_space_free() { #Input: folder to check. Output: show many bytes can fit befo
 
 list_devs() { #Output: human-readable, colorized list of valid block devices to write to. Omits /dev/loop* and the root device
   local IFS=$'\n'
-  for device in $(lsblk -I 8,179,259 -dno PATH | grep -v loop | grep -vx "$ROOT_DEV") ;do
+  for device in $(lsblk -I 8,179,259 -dno NAME | sed 's+^+/dev/+g' | grep -v loop | grep -vx "$ROOT_DEV") ;do
     echo -e "\e[1m\e[97m${device}\e[0m - \e[92m$(lsblk -dno SIZE "$device")B\e[0m - \e[36m$(get_name "$device")\e[0m"
   done
 }
@@ -153,7 +153,7 @@ get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2
     #Use an older version of Windows 11 to fix issue https://github.com/Botspot/wor-flasher/issues/41 until uupdump solves the problem on their end.
     echo 'fdb8a3c7-e28d-48e2-80fa-54673f5786ee'
   elif [ "$1" == 10 ];then
-    wget -qO- "https://uupdump.net/fetchupd.php?arch=arm64&ring=retail&build=19042.330" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
+    wget --no-check-certificate -qO- "https://uupdump.net/fetchupd.php?arch=arm64&ring=retail&build=19042.330" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
   else
     error "get_uuid(): requires an argument for windows version to fetch: '10', '11'"
   fi
@@ -169,12 +169,17 @@ check_uuid() { #return 0 if input is valid uuid, return 1 otherwise
 
 list_langs() { #input: build id Output: colon-separated list of langs and their labels
   [ -z "$1" ] && error "list_langs(): requires an argument for windows update ID. Example ID: db8ec987-d136-4421-afb8-2ef109396b00"
-  wget -qO- "https://api.uupdump.net/listlangs.php?id=$1" | sed 's/.*langFancyNames":{//g' | sed 's/},"updateInfo":.*//g' | tr '{,[' '\n' | tr -d '"' | sort
+  local langs="$(wget --no-check-certificate -qO- "https://api.uupdump.net/listlangs.php?id=$1" | sed 's/.*langFancyNames":{//g' | sed 's/},"updateInfo":.*//g' | tr '{,[' '\n' | tr -d '"' | sort)"
+  
+  if [ -z "$langs" ];then
+    error "Failed to get a list of languages from uupdump.net. Please check your Internet connection."
+  fi
+  echo "$langs"
 }
 
 get_os_name() { #input: build id Output: human-readable name of operating system
   [ -z "$1" ] && error "get_os_name(): requires an argument for windows update ID. Example ID: db8ec987-d136-4421-afb8-2ef109396b00"
-  local wget_out="$(wget -qO- "https://api.uupdump.net/listlangs.php?id=${1}" | sed 's/.*"updateInfo"://g' | tr '{,[' '\n' | tr -d '"}]')"
+  local wget_out="$(wget --no-check-certificate -qO- "https://api.uupdump.net/listlangs.php?id=${1}" | sed 's/.*"updateInfo"://g' | tr '{,[' '\n' | tr -d '"}]')"
   [ -z "$wget_out" ] && error "get_os_name(): failed to retrieve data for $1"
   
   #example value: 'Windows 11'
@@ -481,7 +486,7 @@ to a mounted drive with sufficient space. (Must be an Ext4 partition)"
   echo_white "Downloading uupdump script to legally generate Windows ISO"
   
   rm -rf "$(pwd)/uupdump"
-  wget -O "$(pwd)/uupdump.zip" "https://uupdump.net/get.php?id=${UUID}&pack=${WIN_LANG}&edition=professional&autodl=2" || error "Failed to download uupdump.zip"
+  wget --no-check-certificate -O "$(pwd)/uupdump.zip" "https://uupdump.net/get.php?id=${UUID}&pack=${WIN_LANG}&edition=professional&autodl=2" || error "Failed to download uupdump.zip"
   unzip -q "$(pwd)/uupdump.zip" -d "$(pwd)/uupdump" || error "Failed to extract $(pwd)/uupdump.zip"
   rm -f "$(pwd)/uupdump.zip"
   chmod +x "$(pwd)/uupdump/uup_download_linux.sh" || error "Failed to mark $(pwd)/UUPDump_22000/uup_download_linux.sh script as executable!"
