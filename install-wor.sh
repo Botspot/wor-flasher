@@ -172,7 +172,7 @@ list_langs() { #input: build id Output: colon-separated list of langs and their 
   local langs="$(wget --no-check-certificate -qO- "https://api.uupdump.net/listlangs.php?id=$1" | sed 's/.*langFancyNames":{//g' | sed 's/},"updateInfo":.*//g' | tr '{,[' '\n' | tr -d '"' | sort)"
   
   if [ -z "$langs" ];then
-    error "Failed to get a list of languages from uupdump.net. Please check your Internet connection."
+    error "Failed to get a list of languages from uupdump.net. Please check your Internet connection. Error was:\n$(wget --no-check-certificate -O /dev/null "https://api.uupdump.net/listlangs.php?id=$1" 2>&1)"
   fi
   echo "$langs"
 }

@@ -93,7 +93,7 @@ RPI_MODEL: $RPI_MODEL"
 
 { #choose language
 if [ -z "$WIN_LANG" ];then
-  LANG_LIST="$(list_langs "$UUID")"
+  LANG_LIST="$(list_langs "$UUID")" || exit 1
   
   #move 'en-*' languages to top of list
   LANG_LIST="$(echo "$LANG_LIST" | grep '^en-')
