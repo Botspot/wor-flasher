@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #Written by Botspot
-#This script is an automation for the tutorial that can be found here: https://worproject.ml/guides/how-to-install/from-other-os
+#This script is an automation for the tutorial that can be found here: https://worproject.com/guides/how-to-install/from-other-os
 
 error() { #Input: error message
   echo -e "\\e[91m$1\\e[39m" 1>&2
@@ -402,11 +402,11 @@ echo
 if [ ! -d "$(pwd)/peinstaller" ];then
   echo_white "Downloading WoR PE-based installer from Google Drive"
   
-  PE_INSTALLER_SHA256=$(wget -qO- http://worproject.ml/dldserv/worpe/gethashlatest.php | cut -d ':' -f2)
-  [ -z "$PE_INSTALLER_SHA256" ] && error "Failed to determine a hashsum for WoR PE-based installer.\nURL: http://worproject.ml/dldserv/worpe/gethashlatest.php"
+  PE_INSTALLER_SHA256=$(wget -qO- http://worproject.com/dldserv/worpe/gethashlatest.php | cut -d ':' -f2)
+  [ -z "$PE_INSTALLER_SHA256" ] && error "Failed to determine a hashsum for WoR PE-based installer.\nURL: http://worproject.com/dldserv/worpe/gethashlatest.php"
   
-  #from: https://worproject.ml/downloads#windows-on-raspberry-pe-based-installer
-  URL='http://worproject.ml/dldserv/worpe/downloadlatest.php'
+  #from: https://worproject.com/downloads#windows-on-raspberry-pe-based-installer
+  URL='http://worproject.com/dldserv/worpe/downloadlatest.php'
   #determine Google Drive FILEUUID from given redirect URL
   FILEUUID="$(wget --spider --content-disposition --trust-server-names -O /dev/null "$URL" 2>&1 | grep Location | sed 's/^Location: //g' | sed 's/ \[following\]$//g' | grep 'drive\.google\.com' | sed 's+.*/++g' | sed 's/.*&id=//g')"
   download_from_gdrive "$FILEUUID" "$(pwd)/WoR-PE_Package.zip" || error "Failed to download Windows on Raspberry PE-based installer"
