@@ -48,6 +48,13 @@ if [ -e "$DIRECTORY" ] && [ ! -f "${DIRECTORY}/no-update" ];then
 fi
 }
 
+package_available() { #determine if the specified package-name exists in a repository
+  local package="$1"
+  [ -z "$package" ] && error "package_available(): no package name specified!"
+  #using grep to do this is nearly instantaneous, rather than apt-cache which takes several seconds
+  grep -rqx "Package: $package" /var/lib/apt/lists --exclude="lock" --exclude-dir="partial" 2>/dev/null
+}
+
 install_packages() { #input: space-separated list of apt packages to install
   [ -z "$1" ] && error "install_packages(): requires a list of apt packages to install"
   dependencies="$1"
@@ -236,7 +243,13 @@ LC_ALL=C
 LANGUAGE=C
 
 #install dependencies
-install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget udftools'
+install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse wget udftools' || exit 1
+
+if package_available exfatprogs ;then
+  install_packages exfatprogs || exit 1
+else
+  install_packages exfat-utils || exit 1
+fi
 
 #Create folder to download everything to
 mkdir -p "$DL_DIR"

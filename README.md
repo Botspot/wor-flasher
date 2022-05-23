@@ -129,6 +129,14 @@ Usage:
 ```
 echo_white "Now, downloading windows... please wait"
 ```
+- `package_available` - Determines if a package is possible to install from the apt repositories
+Input: one name of a package
+Usage:
+```
+if package_available yad ;then
+  echo "yad can be installed"
+fi
+```
 - `install_packages` - Checks for and installs a quoted list of packages.  
 Input: string containing a space-separated list of packages  
 Usage:  
