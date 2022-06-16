@@ -55,6 +55,16 @@ package_available() { #determine if the specified package-name exists in a repos
   grep -rqx "Package: $package" /var/lib/apt/lists --exclude="lock" --exclude-dir="partial" 2>/dev/null
 }
 
+package_installed() { #exit 0 if $1 package is installed, otherwise exit 1
+  local package="$1"
+  [ -z "$package" ] && error "package_installed(): no package specified!"
+  #find the package listed in /var/lib/dpkg/status
+  #package_info "$package"
+  
+  #directly search /var/lib/dpkg/status
+  grep "^Package: $package$" /var/lib/dpkg/status -A 1 | tail -n 1 | grep -q 'Status: install ok installed'
+}
+
 install_packages() { #input: space-separated list of apt packages to install
   [ -z "$1" ] && error "install_packages(): requires a list of apt packages to install"
   dependencies="$1"
@@ -245,7 +255,8 @@ LANGUAGE=C
 #install dependencies
 install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse wget udftools' || exit 1
 
-if package_available exfatprogs ;then
+#install exfat partition manipulation utility. exfatprogs replaces exfat-utils, but they cannot both be installed at once.
+if package_available exfatprogs && ! package_installed exfat-utils ;then
   install_packages exfatprogs || exit 1
 else
   install_packages exfat-utils || exit 1
