@@ -86,7 +86,7 @@ install_packages() { #input: space-separated list of apt packages to install
   if [ ! -z "$install_list" ];then
     echo_white "Installing packages: $install_list"
     sudo apt update || error "Failed to run 'sudo apt update'! This is not an error in WoR-flasher."
-    sudo apt install -yf $install_list || error "Failed to install dependency packages! This is not an error in WoR-flasher."
+    sudo apt install -yf $install_list --no-install-recommends || error "Failed to install dependency packages! This is not an error in WoR-flasher."
   fi
 }
 
