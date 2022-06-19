@@ -168,9 +168,12 @@ get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2
     #wget -qO- 'https://uupdump.net/fetchupd.php?arch=arm64&ring=wif&build=latest' | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
     
     #Use an older version of Windows 11 to fix issue https://github.com/Botspot/wor-flasher/issues/41 until uupdump solves the problem on their end.
-    echo 'fdb8a3c7-e28d-48e2-80fa-54673f5786ee'
+    #echo 'fdb8a3c7-e28d-48e2-80fa-54673f5786ee'
+    
+    #Don't get latest update ID, get the second one in the list to reduce likelyhood of incomplete uploads
+    wget --no-check-certificate -qO- "https://uupdump.net/known.php?q=windows+11+22h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | sed -n 2p
   elif [ "$1" == 10 ];then
-    wget --no-check-certificate -qO- "https://uupdump.net/fetchupd.php?arch=arm64&ring=retail&build=19042.330" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
+    wget --no-check-certificate -qO- "https://uupdump.net/known.php?q=windows+10+21h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | sed -n 2p
   else
     error "get_uuid(): requires an argument for windows version to fetch: '10', '11'"
   fi
@@ -184,7 +187,7 @@ check_uuid() { #return 0 if input is valid uuid, return 1 otherwise
   fi
 }
 
-list_langs() { #input: build id Output: colon-separated list of langs and their labels
+list_langs() { #input: build id, Output: colon-separated list of langs and their labels
   [ -z "$1" ] && error "list_langs(): requires an argument for windows update ID. Example ID: db8ec987-d136-4421-afb8-2ef109396b00"
   local langs="$(wget --no-check-certificate -qO- "https://api.uupdump.net/listlangs.php?id=$1" | sed 's/.*langFancyNames":{//g' | sed 's/},"updateInfo":.*//g' | tr '{,[' '\n' | tr -d '"' | sort)"
   
@@ -363,7 +366,7 @@ if [ -z "$DEVICE" ];then
     if [ -b "$DEVICE" ];then
       break #exit loop
     else
-      echo "Device $DEVICE is not a valid block device! Available devices:\n$(list_devs)"
+      echo -e "Device $DEVICE is not a valid block device! Available devices:\n$(list_devs)"
     fi
   done
   echo
@@ -513,7 +516,7 @@ to a mounted drive with sufficient space. (Must be an Ext4 partition)"
   wget --no-check-certificate -O "$(pwd)/uupdump.zip" "https://uupdump.net/get.php?id=${UUID}&pack=${WIN_LANG}&edition=professional&autodl=2" || error "Failed to download uupdump.zip"
   unzip -q "$(pwd)/uupdump.zip" -d "$(pwd)/uupdump" || error "Failed to extract $(pwd)/uupdump.zip"
   rm -f "$(pwd)/uupdump.zip"
-  chmod +x "$(pwd)/uupdump/uup_download_linux.sh" || error "Failed to mark $(pwd)/UUPDump_22000/uup_download_linux.sh script as executable!"
+  chmod +x "$(pwd)/uupdump/uup_download_linux.sh" || error "Failed to mark $(pwd)/uupdump/uup_download_linux.sh script as executable!"
   
   #add /usr/sbin to PATH variable so the chntpw command can be found
   PATH="$(echo "${PATH}:/usr/sbin" | tr ':' '\n' | sort | uniq | tr '\n' ':')"
