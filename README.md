@@ -2,7 +2,7 @@
 **Use a Linux machine to install Windows 10 or Windows 11 on a Raspberry Pi SD card.**
 
 A year ago, this was flat-out impossible.  
-In July 2021, this required following [a complicated tutorial](https://worproject.com/guides/how-to-install/from-other-os).
+In July 2021, this required following [a complicated tutorial](https://worproject.com/guides/how-to-install/from-other-os).  
 Now, using the new WoR-flasher, it's a *piece of cake*.  
 
 ## Useful information
