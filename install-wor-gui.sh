@@ -46,8 +46,8 @@ fi
 #source the script to acquire necessary functions
 source "$cli_script" source #by sourcing, this script checks for and applies updates.
 
-#install dependencies
-install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse exfat-utils wget'
+#run safety checks and install packages
+setup || exit 1
 
 #this array stores flags that are used in all yad windows - saves on the typing and makes it easy to change an attribute on all dialogs from one place.
 yadflags=(--center --width=310 --height=250 --window-icon="$DIRECTORY/logo.png" --title="Windows on Raspberry")

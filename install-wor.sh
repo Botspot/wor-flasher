@@ -67,13 +67,13 @@ package_installed() { #exit 0 if $1 package is installed, otherwise exit 1
 
 install_packages() { #input: space-separated list of apt packages to install
   [ -z "$1" ] && error "install_packages(): requires a list of apt packages to install"
-  dependencies="$1"
-  install_list=''
+  local dependencies="$1"
+  local install_list=''
+  local package
   
-  PREIFS="$IFS"
   local IFS=' '
   for package in $dependencies ;do
-    if ! dpkg -s "$package" 2>/dev/null | grep -q 'Status: install ok installed' ;then
+    if ! package_installed "$package" ;then
       #if the currently-checked package is not installed, add it to the list of packages to install
       if [ -z "$install_list" ];then
         install_list="$package"
@@ -82,7 +82,7 @@ install_packages() { #input: space-separated list of apt packages to install
       fi
     fi
   done
-  IFS="$PREIFS"
+  
   if [ ! -z "$install_list" ];then
     echo_white "Installing packages: $install_list"
     sudo apt update || error "Failed to run 'sudo apt update'! This is not an error in WoR-flasher."
@@ -210,39 +210,49 @@ get_os_name() { #input: build id Output: human-readable name of operating system
   echo -e "$version build $build"
 }
 
-{ #run safety checks
-#check for internet connection
-wget_errors="$(wget --spider github.com 2>&1)"
-if [ $? != 0 ];then
-  error "No internet connection!\ngithub.com failed to respond.\nErrors: $wget_errors"
-fi
-
-if [ "$(id -u)" == 0 ];then
-  echo_white "WoR-flasher is not designed to be run as root.\nDoing so is known to cause problems."
-  echo -n "Are you sure you want to continue? [y/N]"
-  read answer
-  echo "$answer"
-  if [ -z "$answer" ] || [ "$answer" != y ];then
-    exit 1
+setup() { #run safety checks and install packages
+  #check for internet connection
+  local wget_errors="$(wget --spider github.com 2>&1)"
+  if [ $? != 0 ];then
+    error "No internet connection!\ngithub.com failed to respond.\nErrors: $wget_errors"
   fi
-  for i in {60..0}; do
-    echo -ne "You have $i seconds to reconsider your decision.\033[0K\r"
-    sleep 1
-  done
-fi
-
-#Make sure that DL_DIR is not set to a drive with a FAT-type partition
-if df -T "$DL_DIR" | grep -q 'fat' ;then
-  error "The $DL_DIR directory is on a FAT32/FAT16/vfat partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 4.3GB.\nPlease format $DL_DIR to use an Ext4 partition."
-fi
-
-#Make sure modules exist for the running kernel - otherwise a kernel upgrade occurred and the user needs to reboot. See https://github.com/Botspot/wor-flasher/issues/35
-if [ ! -d /lib/modules/$(uname -r) ];then
-  error "The running kernel ($(uname -r)) does not match any directory in /lib/modules.
+  
+  if [ "$(id -u)" == 0 ];then
+    echo_white "WoR-flasher is not designed to be run as root.\nDoing so is known to cause problems."
+    echo -n "Are you sure you want to continue? [y/N]"
+    read answer
+    echo "$answer"
+    if [ -z "$answer" ] || [ "$answer" != y ];then
+      exit 1
+    fi
+    for i in {60..0}; do
+      echo -ne "You have $i seconds to reconsider your decision.\033[0K\r"
+      sleep 1
+    done
+  fi
+  
+  #Make sure that DL_DIR is not set to a drive with a FAT-type partition
+  if df -T "$DL_DIR" | grep -q 'fat' ;then
+    error "The $DL_DIR directory is on a FAT32/FAT16/vfat partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 4.3GB.\nPlease format $DL_DIR to use an Ext4 partition."
+  fi
+  
+  #Make sure modules exist for the running kernel - otherwise a kernel upgrade occurred and the user needs to reboot. See https://github.com/Botspot/wor-flasher/issues/35
+  if [ ! -d /lib/modules/$(uname -r) ];then
+    error "The running kernel ($(uname -r)) does not match any directory in /lib/modules.
 Usually this means you have not yet rebooted since upgrading the kernel.
 Try rebooting.
 If this error persists, contact Botspot - the WoR-flasher developer."
-fi
+  fi
+  
+  #install dependencies
+  install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse wget udftools' || exit 1
+  
+  #install exfat partition manipulation utility. exfatprogs replaces exfat-utils, but they cannot both be installed at once.
+  if package_available exfatprogs && ! package_installed exfat-utils ;then
+    install_packages exfatprogs || exit 1
+  else
+    install_packages exfat-utils || exit 1
+  fi
 }
 
 [ "$1" == 'source' ] && return 0 #If being sourced, exit here at this point in the script
@@ -255,15 +265,7 @@ LANG=C
 LC_ALL=C
 LANGUAGE=C
 
-#install dependencies
-install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse wget udftools' || exit 1
-
-#install exfat partition manipulation utility. exfatprogs replaces exfat-utils, but they cannot both be installed at once.
-if package_available exfatprogs && ! package_installed exfat-utils ;then
-  install_packages exfatprogs || exit 1
-else
-  install_packages exfat-utils || exit 1
-fi
+setup || exit 1
 
 #Create folder to download everything to
 mkdir -p "$DL_DIR"
@@ -598,6 +600,9 @@ if [ $? != 0 ];then
   sudo modprobe fuse
   sudo mount.exfat-fuse "$PART2" "$mntpnt"/winpart || error "Failed to mount $PART2 to $mntpnt/winpart"
 fi
+#unmount on exit
+trap "sudo umount -q '$PART2'" EXIT
+trap "sudo umount -q '$PART1'" EXIT
 
 echo_white "Mounting image"
 mkdir -p "$(pwd)/isomount" || error "Failed to make $(pwd)/isomount folder"
@@ -608,6 +613,8 @@ if [ $? != 0 ];then
   sudo modprobe udf
   sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount" || error "Failed to mount ISO file ($(echo "$(pwd)/uupdump"/*.ISO)) to $(pwd)/isomount"
 fi
+#unmount on exit
+trap "sudo umount -q '$(pwd)/isomount'" EXIT
 
 echo_white "Copying files from image to device:"
 echo "  - Boot files"
