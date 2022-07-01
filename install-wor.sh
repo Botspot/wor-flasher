@@ -108,10 +108,10 @@ get_partition() { #Input: device & partition number. Output: partition /dev entr
   
   if [ "$2" == 'all' ];then
     #special mode: return every partition if $2 is 'all'
-    lsblk -no path "$1" | grep -vx "$1"
+    lsblk -nro NAME "$1" | sort -n | sed 's+^+/dev/+g' | grep -vx "$1"
   else #provided with partition number
     #list drive and partitions in $1, filter out the drive, then get the Nth line
-    lsblk -no PATH "$1" | grep -vx "$1" | sed -n "$2"p
+    lsblk -nro NAME "$1" | sort -n | sed 's+^+/dev/+g' | grep -vx "$1" | sed -n "$2"p
   fi
 }
 
