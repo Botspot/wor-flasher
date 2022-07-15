@@ -171,7 +171,7 @@ echo "CAN_INSTALL_ON_SAME_DRIVE: $CAN_INSTALL_ON_SAME_DRIVE"
 
 { #confirmation dialog and edit config.txt
 
-window_text="- Target drive: <b>$DEVICE</b> ($(lsblk -dno SIZE "$DEVICE")B $(get_name "$DEVICE"))
+window_text="- Target drive: <b>$DEVICE</b> ($(lsblk -dno SIZE "$DEVICE" | tr -d ' ')B $(get_name "$DEVICE"))
 - $(echo "$CAN_INSTALL_ON_SAME_DRIVE" | sed 's/1/Drive is larger than 25 GB - can install Windows on itself/g' | sed 's/0/Drive is smaller than 25 GB - can install Windows on other drives/g')
 - Hardware type: <b>Raspberry Pi $RPI_MODEL</b>
 - Operating system: <b>$(get_os_name "$UUID" | sed "s/ build / ($WIN_LANG) arm64 build /g")</b>"

@@ -48,6 +48,10 @@ if [ -e "$DIRECTORY" ] && [ ! -f "${DIRECTORY}/no-update" ];then
 fi
 }
 
+wget() { #wrapper function for the wget command for better reliability
+  command wget --no-check-certificate -4 "$@"
+}
+
 package_available() { #determine if the specified package-name exists in a repository
   local package="$1"
   [ -z "$package" ] && error "package_available(): no package name specified!"
@@ -97,7 +101,7 @@ download_from_gdrive() { #Input: file UUID and filename
   local FILEUUID="$1"
   local FILENAME="$2"
   
-  wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id='"$FILEUUID" -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=$FILEUUID" -O "$2" && rm -rf /tmp/cookies.txt
+  wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies 'https://docs.google.com/uc?export=download&id='"$FILEUUID" -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=$FILEUUID" -O "$2" && rm -rf /tmp/cookies.txt
   
 }
 
@@ -164,22 +168,49 @@ list_devs() { #Output: human-readable, colorized list of valid block devices to 
 }
 
 get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2ef109396b00'
-  if [ "$1" == 11 ];then
-    #wget -qO- 'https://uupdump.net/fetchupd.php?arch=arm64&ring=wif&build=latest' | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | head -n1
-    
-    #Use an older version of Windows 11 to fix issue https://github.com/Botspot/wor-flasher/issues/41 until uupdump solves the problem on their end.
-    #echo 'fdb8a3c7-e28d-48e2-80fa-54673f5786ee'
-    
-    #Don't get latest update ID, get the second one in the list to reduce likelyhood of incomplete uploads
-    wget --no-check-certificate -qO- "https://uupdump.net/known.php?q=windows+11+22h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | sed -n 2p
-  elif [ "$1" == 10 ];then
-    wget --no-check-certificate -qO- "https://uupdump.net/known.php?q=windows+10+21h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | sed -n 2p
-  else
+  local WIN_VER="$1"
+  if [ -z "$WIN_VER" ];then
     error "get_uuid(): requires an argument for windows version to fetch: '10', '11'"
+  elif [ "$WIN_VER" != 11 ] && [ "$WIN_VER" != 10 ];then
+    error "get_uuid(): unrecognized argument '$WIN_VER'. Allowed values: '10', '11'"
   fi
+  
+  
+  #Sometimes the newest UUP is incomplete for a while, resulting in ERROR 500. This flag allows an older uup to be chosen with 2, 3, 4, etc.
+  local i=1
+  local UUID
+  while true;do
+    
+    if [ "$WIN_VER" == 11 ];then
+      UUID="$(wget -qO- "https://uupdump.net/known.php?q=windows+11+22h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | sed -n ${i}p)"
+      if [ ${PIPESTATUS[0]} != 0 ];then
+        error "get_uuid(): Failed to reach uupdump.net URL https://uupdump.net/known.php?q=windows+11+22h2+arm64\nPlease see if that URL works in a web browser."
+      fi
+    elif [ "$WIN_VER" == 10 ];then
+      UUID="$(wget -qO- "https://uupdump.net/known.php?q=windows+10+21h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | sed -n ${i}p)"
+      if [ ${PIPESTATUS[0]} != 0 ];then
+        error "get_uuid(): Failed to reach uupdump.net URL https://uupdump.net/known.php?q=windows+10+21h2+arm64\nPlease see if that URL works in a web browser."
+      fi
+    fi
+    
+    #Check if UUID exists
+    if [ -z "$UUID" ];then
+      error "get_uuid(): Failed to find a working Update ID for Windows $WIN_VER. Please report this issue to Botspot."
+    elif validate_uuid "$UUID" ;then
+      #Successfully found a valid Update ID that will download okay
+      break
+    else
+      echo "get_uuid(): Update ID $UUID is incomplete; using older one..." 1>&2
+      i=$((i+1)) #Now get the next available option in the list
+    fi
+    
+  done
+  
+  #Return the UUID
+  echo "$UUID"
 }
 
-check_uuid() { #return 0 if input is valid uuid, return 1 otherwise
+check_uuid() { #return 0 if input is in a valid uuid format, return 1 otherwise
   if [[ $1 =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{12}\}?$ ]];then
     return 0
   else
@@ -187,19 +218,23 @@ check_uuid() { #return 0 if input is valid uuid, return 1 otherwise
   fi
 }
 
+validate_uuid() { #Check if the uupdump website can successfully download scripts for the specified Windows Update ID
+  wget -q "https://uupdump.net/get.php?id=${1}&pack=en-us&edition=professional&autodl=2" --spider || return 1 
+}
+
 list_langs() { #input: build id, Output: colon-separated list of langs and their labels
   [ -z "$1" ] && error "list_langs(): requires an argument for windows update ID. Example ID: db8ec987-d136-4421-afb8-2ef109396b00"
-  local langs="$(wget --no-check-certificate -qO- "https://api.uupdump.net/listlangs.php?id=$1" | sed 's/.*langFancyNames":{//g' | sed 's/},"updateInfo":.*//g' | tr '{,[' '\n' | tr -d '"' | sort)"
+  local langs="$(wget -qO- "https://api.uupdump.net/listlangs.php?id=$1" | sed 's/.*langFancyNames":{//g' | sed 's/},"updateInfo":.*//g' | tr '{,[' '\n' | tr -d '"' | sort)"
   
   if [ -z "$langs" ];then
-    error "Failed to get a list of languages from uupdump.net. Please check your Internet connection. Error was:\n$(wget --no-check-certificate -O /dev/null "https://api.uupdump.net/listlangs.php?id=$1" 2>&1)"
+    error "Failed to get a list of languages from uupdump.net. Please check your Internet connection. Error was:\n$(wget -O /dev/null "https://api.uupdump.net/listlangs.php?id=$1" 2>&1)"
   fi
   echo "$langs"
 }
 
 get_os_name() { #input: build id Output: human-readable name of operating system
   [ -z "$1" ] && error "get_os_name(): requires an argument for windows update ID. Example ID: db8ec987-d136-4421-afb8-2ef109396b00"
-  local wget_out="$(wget --no-check-certificate -qO- "https://api.uupdump.net/listlangs.php?id=${1}" | sed 's/.*"updateInfo"://g' | tr '{,[' '\n' | tr -d '"}]')"
+  local wget_out="$(wget -qO- "https://api.uupdump.net/listlangs.php?id=${1}" | sed 's/.*"updateInfo"://g' | tr '{,[' '\n' | tr -d '"}]')"
   [ -z "$wget_out" ] && error "get_os_name(): failed to retrieve data for $1"
   
   #example value: 'Windows 11'
@@ -210,12 +245,59 @@ get_os_name() { #input: build id Output: human-readable name of operating system
   echo -e "$version build $build"
 }
 
+uupdump() { #Download Windows image for the $1 uuid and the $2 language
+  local UUID="$1"
+  [ -z "$UUID" ] && error "uupdump(): must specify OS version number or UUID for Windows ISO!"
+  
+  local WIN_LANG="$2"
+  [ -z "$WIN_LANG" ] && error "uupdump(): must specify language for Windows ISO! Run the list_langs function to see available options."
+  
+  echo_white "Downloading uupdump script to legally generate Windows ISO"
+  
+  rm -rf "$(pwd)/uupdump"
+  wget -O "$(pwd)/uupdump.zip" "https://uupdump.net/get.php?id=${UUID}&pack=${WIN_LANG}&edition=professional&autodl=2" || error "uupdump(): Failed to download uupdump.zip"
+  unzip -q "$(pwd)/uupdump.zip" -d "$(pwd)/uupdump" || error "Failed to extract $(pwd)/uupdump.zip"
+  rm -f "$(pwd)/uupdump.zip"
+  chmod +x "$(pwd)/uupdump/uup_download_linux.sh" || error "Failed to mark $(pwd)/uupdump/uup_download_linux.sh script as executable!"
+  
+  #add /usr/sbin to PATH variable so the chntpw command can be found
+  export PATH="$(echo "${PATH}:/usr/sbin" | tr ':' '\n' | sort | uniq | tr '\n' ':')"
+  
+  #run uup_download_linux.sh
+  echo_white "Generating Windows image with uupdump"
+  cd "$(pwd)/uupdump"
+  #Allow uupdump to fail 4 times before giving up
+  for i in {1..4}; do
+    nice "$(pwd)/uup_download_linux.sh"
+    if [ $? == 0 ];then
+      echo_white "\nuup_download_linux.sh successfully generated a complete Windows image."
+      uup_failed=0
+      break
+    else
+      echo_white "\nuup_download_linux.sh failed, most likely due to unreliable Internet.\nTrying again in 1 minute. (Attempt $i of 4)"
+      uup_failed=1
+      rm -rf "$(pwd)/uupdump"
+      sleep 60
+    fi
+  done
+  cd ..
+  
+  #check that the ISO file really does exist and filename includes 'ARM64'
+  if [ "$uup_failed" == 1 ];then
+    error "Failed to generate a Windows ISO! uup_download_linux.sh exited with an error so please see the errors above."
+  elif [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
+    error "Failed to generate a Windows ISO! uup_download_linux.sh did not exit with an error, but there is no file matching "\""$(pwd)/uupdump/*ARM64*.ISO"\"""
+  fi
+}
+
 setup() { #run safety checks and install packages
   #check for internet connection
-  local wget_errors="$(wget --spider github.com 2>&1)"
+  echo -n "Checking for internet connection... "
+  local wget_errors="$(command wget --spider github.com 2>&1)"
   if [ $? != 0 ];then
     error "No internet connection!\ngithub.com failed to respond.\nErrors: $wget_errors"
   fi
+  echo Done
   
   if [ "$(id -u)" == 0 ];then
     echo_white "WoR-flasher is not designed to be run as root.\nDoing so is known to cause problems."
@@ -277,42 +359,48 @@ cd "$DL_DIR"
 { #choose windows version
 if [ -z "$UUID" ];then
   while true; do
-    echo -ne "Choose Windows version:
+    echo -ne "\nChoose Windows version:
 \e[97m\e[1m1\e[0m) Windows 11
 \e[97m\e[1m2\e[0m) Windows 10
 \e[97m\e[1m3\e[0m) Custom...
 Enter \e[97m\e[1m1\e[0m, \e[97m\e[1m2\e[0m or \e[97m\e[1m3\e[0m: "
     read REPLY
+    
     case $REPLY in
       1)
         #Windows 11
+        echo "Finding build ID..."
         UUID="$(get_uuid 11)"
         break
         ;;
       2)
         #Windows 10
+        echo "Finding build ID..."
         UUID="$(get_uuid 10)"
         break
         ;;
       3)
         #custom
         read -p $'\nEnter a Windows build ID below.\nGo to https://uupdump.net to browse windows versions.\nExample ID: db8ec987-d136-4421-afb8-2ef109396b00\nID: ' UUID
-        break
+        check_uuid "$UUID" && break || echo "Invalid UUID."
         ;;
       *) echo "Invalid option ${REPLY}. Expected '1', '2' or '3'.";;
     esac
   done
+  
+  echo "Selected build ID: $UUID"
+  echo "Selected Windows version: $(get_os_name "$UUID")"
   echo
 fi
-
-#check uuid validity
-check_uuid "$UUID" || error "Windows ID "\""$UUID"\"" is invalid.\nExample ID: db8ec987-d136-4421-afb8-2ef109396b00"
 }
 
 { #choose language
 if [ -z "$WIN_LANG" ];then
+  echo "Finding languages..."
   LANG_LIST="$(list_langs "$UUID" | awk -F: '{print $1}')"
-  echo -ne "$LANG_LIST\nChoose language: "
+  echo "$LANG_LIST" | tr '\n' ' ' | fold -s -w $COLUMNS
+  echo
+  echo -n "Choose language: "
   while true; do
     read WIN_LANG
     
@@ -512,43 +600,7 @@ If your sd card is too small to do this, you can set the DL_DIR variable
 to a mounted drive with sufficient space. (Must be an Ext4 partition)"
   fi
   
-  echo_white "Downloading uupdump script to legally generate Windows ISO"
-  
-  rm -rf "$(pwd)/uupdump"
-  wget --no-check-certificate -O "$(pwd)/uupdump.zip" "https://uupdump.net/get.php?id=${UUID}&pack=${WIN_LANG}&edition=professional&autodl=2" || error "Failed to download uupdump.zip"
-  unzip -q "$(pwd)/uupdump.zip" -d "$(pwd)/uupdump" || error "Failed to extract $(pwd)/uupdump.zip"
-  rm -f "$(pwd)/uupdump.zip"
-  chmod +x "$(pwd)/uupdump/uup_download_linux.sh" || error "Failed to mark $(pwd)/uupdump/uup_download_linux.sh script as executable!"
-  
-  #add /usr/sbin to PATH variable so the chntpw command can be found
-  PATH="$(echo "${PATH}:/usr/sbin" | tr ':' '\n' | sort | uniq | tr '\n' ':')"
-  
-  #run uup_download_linux.sh
-  echo_white "Generating Windows image with uupdump"
-  prepwd="$(pwd)"
-  cd "$(pwd)/uupdump"
-  #Allow uupdump to fail 4 times before giving up
-  for i in {1..4}; do
-    nice "$(pwd)/uup_download_linux.sh"
-    if [ $? == 0 ];then
-      echo_white "\nuup_download_linux.sh successfully generated a complete Windows image."
-      uup_failed=0
-      break
-    else
-      echo_white "\nuup_download_linux.sh failed, most likely due to unreliable Internet.\nTrying again in 1 minute. (Attempt $i of 4)"
-      uup_failed=1
-      rm -rf "$(pwd)/uupdump"
-      sleep 60
-    fi
-  done
-  cd "$prepwd"
-  
-  #check that the ISO file really does exist and filename includes 'ARM64'
-  if [ "$uup_failed" == 1 ];then
-    error "Failed to generate a Windows ISO! uup_download_linux.sh exited with an error so please see the errors above."
-  elif [ ! -f "$(pwd)/uupdump"/*ARM64*.ISO ];then
-    error "Failed to generate a Windows ISO! uup_download_linux.sh did not exit with an error, but there is no file matching "\""$(pwd)/uupdump/*ARM64*.ISO"\"""
-  fi
+  uupdump "$UUID" "$WIN_LANG" || exit 1
 else
   echo_white "Reusing same Windows image that was generated in the past"
 fi
