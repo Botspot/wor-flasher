@@ -175,7 +175,6 @@ get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2
     error "get_uuid(): unrecognized argument '$WIN_VER'. Allowed values: '10', '11'"
   fi
   
-  
   #Sometimes the newest UUP is incomplete for a while, resulting in ERROR 500. This flag allows an older uup to be chosen with 2, 3, 4, etc.
   local i=1
   local UUID
@@ -196,6 +195,7 @@ get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2
     #Check if UUID exists
     if [ -z "$UUID" ];then
       error "get_uuid(): Failed to find a working Update ID for Windows $WIN_VER. Please report this issue to Botspot."
+      
     elif validate_uuid "$UUID" ;then
       #Successfully found a valid Update ID that will download okay
       break
@@ -219,7 +219,25 @@ check_uuid() { #return 0 if input is in a valid uuid format, return 1 otherwise
 }
 
 validate_uuid() { #Check if the uupdump website can successfully download scripts for the specified Windows Update ID
-  wget -q "https://uupdump.net/get.php?id=${1}&pack=en-us&edition=professional&autodl=2" --spider || return 1 
+  if [ -z "$1" ];then
+    error "validate_uuid(): no UUID specified!"
+  fi
+  
+  while true;do
+    output="$(wget --spider --server-response "https://uupdump.net/get.php?id=${1}&pack=en-us&edition=professional&autodl=2" 2>&1)"
+    
+    if [ $? == 0 ];then
+      #wget succeeded, so link is good
+      return 0
+    elif grep -q '429 Too Many Requests' <<<"$output" ;then
+      #encountered rate-limit; wait and try again. Failed attempts don't reset the server's timeout, so keep polling every second
+      sleep 1
+    else
+      #wget failed and it did not encounter the rate-limit
+      return 1
+    fi
+  done
+  
 }
 
 list_langs() { #input: build id, Output: colon-separated list of langs and their labels
