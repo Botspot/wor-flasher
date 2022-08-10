@@ -175,22 +175,24 @@ get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2
     error "get_uuid(): unrecognized argument '$WIN_VER'. Allowed values: '10', '11'"
   fi
   
+  local search
+  if [ "$WIN_VER" == 11 ];then
+    search="$(wget -qO- "https://uupdump.net/known.php?q=windows+11+22h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g')"
+    if [ ${PIPESTATUS[0]} != 0 ] || [ -z "$search" ];then
+      error "get_uuid(): Failed to search uupdump.net for "\""windows 11 22h2 arm64"\"".\nPlease check if <a href="\""https://uupdump.net"\"">uupdump.net</a> can be reached from your web browser."
+    fi
+  elif [ "$WIN_VER" == 10 ];then
+    search="$(wget -qO- "https://uupdump.net/known.php?q=windows+10+21h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g')"
+    if [ ${PIPESTATUS[0]} != 0 ] || [ -z "$search" ];then
+      error "get_uuid(): Failed to search uupdump.net for "\""windows 10 21h2 arm64"\"".\nPlease check if <a href="\""https://uupdump.net"\"">uupdump.net</a> can be reached from your web browser."
+    fi
+  fi
+  
   #Sometimes the newest UUP is incomplete for a while, resulting in ERROR 500. This flag allows an older uup to be chosen with 2, 3, 4, etc.
   local i=1
   local UUID
   while true;do
-    
-    if [ "$WIN_VER" == 11 ];then
-      UUID="$(wget -qO- "https://uupdump.net/known.php?q=windows+11+22h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | sed -n ${i}p)"
-      if [ ${PIPESTATUS[0]} != 0 ];then
-        error "get_uuid(): Failed to reach uupdump.net URL https://uupdump.net/known.php?q=windows+11+22h2+arm64\nPlease see if that URL works in a web browser."
-      fi
-    elif [ "$WIN_VER" == 10 ];then
-      UUID="$(wget -qO- "https://uupdump.net/known.php?q=windows+10+21h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g' | sed -n ${i}p)"
-      if [ ${PIPESTATUS[0]} != 0 ];then
-        error "get_uuid(): Failed to reach uupdump.net URL https://uupdump.net/known.php?q=windows+10+21h2+arm64\nPlease see if that URL works in a web browser."
-      fi
-    fi
+    UUID="$(echo "$search" | sed -n ${i}p)"
     
     #Check if UUID exists
     if [ -z "$UUID" ];then
@@ -332,7 +334,7 @@ setup() { #run safety checks and install packages
   fi
   
   #Make sure that DL_DIR is not set to a drive with a FAT-type partition
-  if df -T "$DL_DIR" | grep -q 'fat' ;then
+  if df -T "$DL_DIR" 2>/dev/null | grep -q 'fat' ;then
     error "The $DL_DIR directory is on a FAT32/FAT16/vfat partition. This type of partition cannot contain files larger than 4GB, however the Windows image will be 4.3GB.\nPlease format $DL_DIR to use an Ext4 partition."
   fi
   

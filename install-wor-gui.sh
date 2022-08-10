@@ -9,6 +9,14 @@ error() { #Input: error message
   exit 1
 }
 
+loading_dialog() { #display a dialog to say something is loading
+ (echo '# ' ; sleep infinity) | yad "${yadflags[@]}" --height=0 \
+    --progress --pulsate --title="$1" --text="$1" --no-buttons &
+  trap "kill $! 2>/dev/null" EXIT
+  
+  sleep infinity
+}
+
 RUN_MODE=gui #this variable is detected by install-wor.sh to display gui error messages
 
 #Determine the directory that contains this script
@@ -66,10 +74,18 @@ if [ -z "$RPI_MODEL" ] || [ -z "$UUID" ];then
   WINDOWS_VER="$(echo "$output" | sed -n 1p)"
   RPI_MODEL="$(echo "$output" | sed -n 2p | sed 's+Pi4/Pi400+4+g' | sed 's+Pi3/Pi2_v1.2+3+g')"
   
-  if [ "$WINDOWS_VER" == 'Windows 11' ];then
-    UUID="$(get_uuid 11)"
-  elif [ "$WINDOWS_VER" == 'Windows 10' ];then
-    UUID="$(get_uuid 10)"
+  if [ "$WINDOWS_VER" == 'Windows 11' ] || [ "$WINDOWS_VER" == 'Windows 10' ];then
+    loading_dialog "Finding best $WINDOWS_VER image version..." &
+    child_pid=$!
+    trap "kill $child_pid 2>/dev/null" EXIT
+    
+    if [ "$WINDOWS_VER" == 'Windows 11' ];then
+      UUID="$(get_uuid 11)" || exit 1
+    elif [ "$WINDOWS_VER" == 'Windows 10' ];then
+      UUID="$(get_uuid 10)" || exit 1
+    fi
+    
+    kill $child_pid 2>/dev/null
   elif [ "$WINDOWS_VER" == 'Custom' ];then
     while true;do
       UUID="$(yad "${yadflags[@]}" --entry --width=400 \
