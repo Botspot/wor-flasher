@@ -177,12 +177,12 @@ get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2
   
   local search
   if [ "$WIN_VER" == 11 ];then
-    search="$(wget -qO- "https://uupdump.net/known.php?q=windows+11+22h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g')"
+    search="$(wget -qO- 'https://api.uupdump.net/listid.php' | tr '}' '\n' | sed 's/,{//' | grep . | grep ',"arch":"arm64"' | grep 'Windows 11' | grep -v "Insider Preview" | grep -o '"uuid":".*"' | awk -F'"' '{print $4}')"
     if [ ${PIPESTATUS[0]} != 0 ] || [ -z "$search" ];then
       error "get_uuid(): Failed to search uupdump.net for "\""windows 11 22h2 arm64"\"".\nPlease check if <a href="\""https://uupdump.net"\"">uupdump.net</a> can be reached from your web browser."
     fi
   elif [ "$WIN_VER" == 10 ];then
-    search="$(wget -qO- "https://uupdump.net/known.php?q=windows+10+21h2+arm64" | grep 'href="\./selectlang\.php?id=.*"' -o | sed 's/^.*id=//g' | sed 's/"$//g')"
+    search="$(wget -qO- 'https://api.uupdump.net/listid.php' | tr '}' '\n' | sed 's/,{//' | grep . | grep ',"arch":"arm64"' | grep 'Windows 10' | grep -v "Insider Preview" | grep -o '"uuid":".*"' | awk -F'"' '{print $4}')"
     if [ ${PIPESTATUS[0]} != 0 ] || [ -z "$search" ];then
       error "get_uuid(): Failed to search uupdump.net for "\""windows 10 21h2 arm64"\"".\nPlease check if <a href="\""https://uupdump.net"\"">uupdump.net</a> can be reached from your web browser."
     fi
