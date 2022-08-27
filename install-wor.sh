@@ -179,12 +179,12 @@ get_uuid() { #input: '11', '10' Output: build ID like 'db8ec987-d136-4421-afb8-2
   if [ "$WIN_VER" == 11 ];then
     search="$(wget -qO- 'https://api.uupdump.net/listid.php' | tr '}' '\n' | sed 's/,{//' | grep . | grep ',"arch":"arm64"' | grep 'Windows 11' | grep -v "Insider Preview" | grep -o '"uuid":".*"' | awk -F'"' '{print $4}')"
     if [ ${PIPESTATUS[0]} != 0 ] || [ -z "$search" ];then
-      error "get_uuid(): Failed to search uupdump.net for "\""windows 11 22h2 arm64"\"".\nPlease check if <a href="\""https://uupdump.net"\"">uupdump.net</a> can be reached from your web browser."
+      error "get_uuid(): Failed to get list of Windows 11 versions.\nPlease check if <a href="\""https://uupdump.net"\"">uupdump.net</a> can be reached from your web browser."
     fi
   elif [ "$WIN_VER" == 10 ];then
     search="$(wget -qO- 'https://api.uupdump.net/listid.php' | tr '}' '\n' | sed 's/,{//' | grep . | grep ',"arch":"arm64"' | grep 'Windows 10' | grep -v "Insider Preview" | grep -o '"uuid":".*"' | awk -F'"' '{print $4}')"
     if [ ${PIPESTATUS[0]} != 0 ] || [ -z "$search" ];then
-      error "get_uuid(): Failed to search uupdump.net for "\""windows 10 21h2 arm64"\"".\nPlease check if <a href="\""https://uupdump.net"\"">uupdump.net</a> can be reached from your web browser."
+      error "get_uuid(): Failed to get list of Windows 10 versions.\nPlease check if <a href="\""https://uupdump.net"\"">uupdump.net</a> can be reached from your web browser."
     fi
   fi
   
@@ -267,7 +267,7 @@ get_os_name() { #input: build id Output: human-readable name of operating system
 
 uupdump() { #Download Windows image for the $1 uuid and the $2 language
   local UUID="$1"
-  [ -z "$UUID" ] && error "uupdump(): must specify OS version number or UUID for Windows ISO!"
+  [ -z "$UUID" ] && error "uupdump(): must specify windows update ID. Example ID: db8ec987-d136-4421-afb8-2ef109396b00"
   
   local WIN_LANG="$2"
   [ -z "$WIN_LANG" ] && error "uupdump(): must specify language for Windows ISO! Run the list_langs function to see available options."
@@ -670,7 +670,22 @@ sudo mount.exfat-fuse "$PART2" "$mntpnt"/winpart
 if [ $? != 0 ];then
   echo_white "Failed to mount $PART2. Trying again after loading the 'fuse' kernel module."
   sudo modprobe fuse
-  sudo mount.exfat-fuse "$PART2" "$mntpnt"/winpart || error "Failed to mount $PART2 to $mntpnt/winpart"
+  
+  if [ $? != 0 ];then
+    modprobe_failed=1
+  else
+    modprobe_failed=0
+  fi
+  
+  sudo mount.exfat-fuse "$PART2" "$mntpnt"/winpart
+  if [ $? != 0 ];then
+    if [ "$modprobe_failed" == 1 ] && [ ! -d "/lib/modules/$(uname -r)" ];then
+      error "The 'fuse' kernel module is required to mount $PART2 to $mntpnt/winpart, but all kernel modules are missing! Most likely, you upgraded kernel packages and have not rebooted yet. Try rebooting."
+      
+    else
+      error "Failed to mount $PART2 to $mntpnt/winpart"
+    fi
+  fi
 fi
 #unmount on exit
 trap "sudo umount -q '$PART2'" EXIT
@@ -683,7 +698,22 @@ sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount" 2>/dev/null
 if [ $? != 0 ];then
   echo_white "Failed to mount the image. Trying again after loading the 'udf' kernel module."
   sudo modprobe udf
-  sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount" || error "Failed to mount ISO file ($(echo "$(pwd)/uupdump"/*.ISO)) to $(pwd)/isomount"
+  
+  if [ $? != 0 ];then
+    modprobe_failed=1
+  else
+    modprobe_failed=0
+  fi
+  
+  sudo mount "$(pwd)/uupdump"/*.ISO "$(pwd)/isomount"
+  if [ $? != 0 ];then
+    if [ "$modprobe_failed" == 1 ] && [ ! -d "/lib/modules/$(uname -r)" ];then
+      error "The 'udf' kernel module is required to mount the ISO file (uupdump/$(basename $(echo "$(pwd)/uupdump"/*.ISO))), but all kernel modules are missing! Most likely, you upgraded kernel packages and have not rebooted yet. Try rebooting."
+      
+    else
+      error "Failed to mount ISO file ($(echo "$(pwd)/uupdump"/*.ISO)) to $(pwd)/isomount"
+    fi
+  fi
 fi
 #unmount on exit
 trap "sudo umount -q '$(pwd)/isomount'" EXIT
