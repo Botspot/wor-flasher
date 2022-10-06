@@ -46,6 +46,10 @@ dtoverlay=miniuart-bt"
   
 fi
 
+if [ -z "$DRY_RUN" ];then
+  DRY_RUN=0
+fi
+
 #this script and cli-based install-wor.sh should be in same directory.
 cli_script="$DIRECTORY/install-wor.sh"
 if [ ! -f "$cli_script" ];then
@@ -200,14 +204,22 @@ while true;do #repeat the Installation Overview window until Flash button clicke
     existing_img_chk=(--field="A Windows image already exists. Check this box to rebuild it.":CHK "$rm_img")
   fi
   
+  if [ "$DRY_RUN" == 1 ];then
+    deletion_warning="DRY_RUN=1, so the target drive will not be modified."
+    deletion_warning_2="$deletion_warning"
+  else
+    deletion_warning="<b>Warning!</b> All data on the target drive will be deleted!"
+    deletion_warning_2="$deletion_warning Backup any files before it's too late!"
+  fi
+  
   output="$(yad "${yadflags[@]}" --width=500 --height=400 --image="$DIRECTORY/overview.png" --image-on-top \
     --separator='\n' --form \
     --field="$window_text":LBL '' \
     "${existing_img_chk[@]}" \
     --field="<b>Edit config.txt:</b>     <small>Want to overclock? <a href="\""file://${DIRECTORY}/config_txt_tips"\"">Click here</a></small>":TXT "$CONFIG_TXT" \
-    --field="<b>Warning!</b> All data on the target drive will be deleted!":LBL '' \
+    --field="$deletion_warning":LBL '' \
     --button='<b>Advanced...</b>'!!"More settings, intended for the advanced user or for troubleshooting":2 \
-    --button='<b>Flash</b>'!!"Warning! All data on the target drive will be deleted! Backup any files before it's too late!":0
+    --button='<b>Flash</b>'!!"$deletion_warning_2":0
   )"
   button=$?
   
@@ -274,7 +286,7 @@ while true;do #repeat the Installation Overview window until Flash button clicke
       output="$(yad "${yadflags[@]}" --width=550 --image-on-top \
         "${refresh_prompt[@]}" \
         --separator='\n' --form \
-        --field="Working directory::DIR" "$DL_DIR" \
+        --field="Working directory: (DL_DIR):DIR" "$DL_DIR" \
         "${fields[@]}" \
         --button="<b>Cancel</b>":1 --button="<b>OK</b>":0
       )"
@@ -314,6 +326,9 @@ while true;do #repeat the Installation Overview window until Flash button clicke
             rm_img=FALSE #This "Advanced..." dialog just deleted the windows image, so no need for the var to remain 'TRUE' - remove unnecessary output when removing twice
           fi
           #DRY_RUN
+          echo dry run
+          echo "$DRY_RUN"
+          echo "$output" | sed -n 10p
           if [ "$(echo "$output" | sed -n 10p)" == TRUE ] && [ "$DRY_RUN" == 0 ];then
             echo "User checked the box to set DRY_RUN=1"
             DRY_RUN=1
@@ -335,7 +350,7 @@ while true;do #repeat the Installation Overview window until Flash button clicke
     error "User exited when reviewing information and customizing config.txt"
   fi
   
-done
+done #end of repeating the Installation Overview window
 
 #if user checked the box to rebuild the image, delete the image now
 if [ "$rm_img" == TRUE ];then
