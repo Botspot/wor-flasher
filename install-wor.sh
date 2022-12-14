@@ -390,13 +390,13 @@ Enter \e[97m\e[1m1\e[0m, \e[97m\e[1m2\e[0m or \e[97m\e[1m3\e[0m: "
       1)
         #Windows 11
         echo "Finding build ID..."
-        UUID="$(get_uuid 11)"
+        UUID="$(get_uuid 11)" || exit 1
         break
         ;;
       2)
         #Windows 10
         echo "Finding build ID..."
-        UUID="$(get_uuid 10)"
+        UUID="$(get_uuid 10)" || exit 1
         break
         ;;
       3)
@@ -417,7 +417,8 @@ fi
 { #choose language
 if [ -z "$WIN_LANG" ];then
   echo "Finding languages..."
-  LANG_LIST="$(list_langs "$UUID" | awk -F: '{print $1}')"
+  LANG_LIST="$(list_langs "$UUID")" || exit 1
+  LANG_LIST="$(echo "$LANG_LIST" | awk -F: '{print $1}')"
   echo "$LANG_LIST" | tr '\n' ' ' | fold -s -w $COLUMNS
   echo
   echo -n "Choose language: "
