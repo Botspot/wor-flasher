@@ -34,6 +34,7 @@ if [ -z "$CONFIG_TXT" ];then
 
 # don't change anything below this point #
 arm_64bit=1
+arm_boost=1
 enable_uart=1
 uart_2ndstage=1
 enable_gic=1
@@ -309,6 +310,102 @@ fi
 echo "CAN_INSTALL_ON_SAME_DRIVE: $CAN_INSTALL_ON_SAME_DRIVE"
 }
 
+{ #Offer to use ZRAM DL_DIR if appropriate
+#if a windows ESD file will be downloaded (no point in using ram if windows is already in DL_DIR), an ISO will not be used, and DL_DIR has not already been customized
+if [ ! -f "${DL_DIR}/winfiles_from_iso_${BID}_${WIN_LANG}/alldone" ] && [ ! -f "${DL_DIR}/winfiles_${BID}_${WIN_LANG}/alldone" ] && [ -z "$SOURCE_FILE" ] && [ "$DL_DIR" == "$HOME/wor-flasher-files" ];then
+  #if total usable RAM is >= 5GB
+  if [ "$(awk '/MemTotal/ {print $2}' /proc/meminfo)" -ge $((5*1024*1024)) ];then
+    #if kernel modules are available
+    if [ -d "/lib/modules/$(uname -r)" ];then
+      #tooltip text of 'Use RAM' button will explain that More RAM app from Pi-Apps will be installed, assuming it is not already installed.
+      if [ -f /usr/bin/zram.sh ] && [ -d /zram ];then
+        tooltip='Will set DL_DIR to the /zram folder - this folder was set up when you installed <b>More RAM</b> from Pi-Apps.'
+      elif [ -f /usr/local/bin/pi-apps ];then
+        tooltip='Will install <b>More RAM</b> from Pi-Apps and then set DL_DIR to the new ramdisk at <u>/zram</u>.'
+      else
+        tooltip='Will setup a RAM-compression tool from Pi-Apps and then set DL_DIR to the new ramdisk at <u>/zram</u>. Please note that Pi-Apps itself will not be installed.'
+      fi
+      
+      yad "${yadflags[@]}" --width=500 --form --field="About 4.2GB of files need to be downloaded to system storage before flashing can begin.
+But your system has $(echo "scale=1 ; $( awk '/MemTotal/ {print $2}' /proc/meminfo ) / 1048576 " | bc )GB of RAM. Everything can be downloaded to RAM if you prefer.
+Choose this if:
+- You don't have enough space in $HOME
+- You want your system storage to last as long as possible
+- You don't plan to use WoR-Flasher often:LBL" \
+        --image="$DIRECTORY/ram.png" --image-on-top \
+        --button="Use ${DL_DIR}":2 \
+        --button="<b>Use RAM</b>!!${tooltip}":0
+      button=$?
+      
+      if [ "$button" == 0 ];then
+        status "User chose to download everything to RAM."
+        echo "For best results, please close all other programs. (especially web browsers and games)"
+        yad "${yadflags[@]}" --width=500 --image="$DIRECTORY/ram.png" --image-on-top \
+          --form --field="OK! Will download everything to RAM. For best results, please close all other programs. (especially web browsers and games):LBL" \
+          --button='<b>OK</b>':0 >/dev/null
+        
+        #install zram if necessary
+        if [ ! -f /usr/bin/zram.sh ];then
+          #install More RAM
+          loading_dialog "Setting up RAM..." &
+          loader_pid=$!
+          trap "kill $loader_pid 2>/dev/null" EXIT
+          
+          if [ -f "$HOME/pi-apps/manage" ];then
+            #if Pi-Apps installed to default location, install More RAM from there
+            "$HOME/pi-apps/manage" install 'More RAM'
+            exitcode=$?
+          elif [ -f /usr/local/bin/pi-apps ] && [ -f "$(dirname "$(cat /usr/local/bin/pi-apps | sed -n 2p)")/manage" ];then
+            #if Pi-Apps installed to another folder, install More RAM from there
+            "$(dirname "$(cat /usr/local/bin/pi-apps | sed -n 2p)")/manage"
+            exitcode=$?
+          else
+            #Pi-Apps is not installed, so run More RAM script straight from the pi-apps github repo
+            wget -qO- 'https://raw.githubusercontent.com/Botspot/pi-apps/master/apps/More%20RAM/install' | bash
+            #either wget or bash could have failed, so check them both
+            if [ ${PIPESTATUS[0]} == 0 ] && [ ${PIPESTATUS[1]} == 0 ];then
+              exitcode=0
+            else
+              exitcode=1
+            fi
+          fi
+          #installation complete, so close pulsating progress bar dialog
+          kill $loader_pid 2>/dev/null
+          
+          #edge case: if user had installed More RAM before and disabled the /zram folder, enable it now
+          if [ "$exitcode" == 0 ] && [ ! -d /zram ];then
+            sudo zram.sh storage-on
+            if [ ! -d /zram ];then
+              echo_red "zram.sh failed to create /zram ramdisk."
+              exitcode=1
+            fi
+          fi
+          
+          #display warning dialog if installing More RAM failed
+          if [ "$exitcode" == 0 ];then
+            DL_DIR='/zram'
+          else
+            yad "${yadflags[@]}" --text="Failed to install 'More RAM' app from Pi-Apps.\nWoR-Flasher will not download files to RAM."
+          fi
+        else
+          #zram already installed; now make sure /zram exists
+          if [ -d /zram ];then
+            DL_DIR='/zram'
+          else
+            sudo zram.sh storage-on
+            if [ -d /zram ];then
+              DL_DIR='/zram'
+            else
+              yad "${yadflags[@]}" --text="Failed to set up ZRAM ramdisk.\nWoR-Flasher will not download files to RAM."
+            fi
+          fi
+        fi
+      fi
+    fi
+  fi
+fi
+}
+
 { #confirmation dialog and edit config.txt
 
 window_text="- Target drive: <b>$DEVICE</b> ($(lsblk -dno SIZE "$DEVICE" | tr -d ' ')B $(get_device_name "$DEVICE"))
@@ -482,12 +579,11 @@ fi
 
 #display multi-line CONFIG_TXT variable
 echo -e "CONFIG_TXT: ⤵\n$(echo "$CONFIG_TXT" | sed 's/^/  > /g')\nCONFIG_TXT: ⤴\n"
-
 }
 
 echo "Launching install-wor.sh in a separate terminal"
 
-#run the install-wor.sh script in a terminal. If it succeeds, the terminal closes automatically. If it fails, the terminal stays open forever until you close it.
+#run the install-wor.sh script in a terminal. If it succeeds, the "Next steps" window opens. If it fails, the terminal stays open forever until you close it.
 "$DIRECTORY/terminal-run" "set -a
 DL_DIR="\""$DL_DIR"\""
 BID="\""$BID"\""
@@ -499,8 +595,16 @@ CONFIG_TXT="\""$CONFIG_TXT"\""
 RUN_MODE=gui
 DRY_RUN="\""$DRY_RUN"\""
 SOURCE_FILE="\""$SOURCE_FILE"\""
+
 $cli_script
-if [ "\$"? == 0 ];then
+exitcode="\$"?
+
+#clear zram - avoid leaving files occupying space in /zram
+if [ "\"\$"DL_DIR"\"" == /zram ];then
+  sudo zram.sh &>/dev/null
+fi
+
+if [ "\"\$"exitcode"\"" == 0 ];then
   #display 'next steps' window
   yad --center --window-icon="\""$DIRECTORY/logo.png"\"" --title='Windows on Raspberry' \
     --image="\""${DIRECTORY}/next-steps.png"\"" --button=Close:0
@@ -510,13 +614,7 @@ fi" "Running $(basename "$cli_script")"
 
 echo "The terminal running install-wor.sh has been closed."
 
-
-
-
-
-
-
-
-
-
-
+#if downloading to ram, empty it now
+if [ "$DL_DIR" == /zram ] && [ -d /zram/peinstaller ];then
+  sudo zram.sh &>/dev/null
+fi

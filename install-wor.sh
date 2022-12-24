@@ -952,7 +952,7 @@ if [[ "$SOURCE_FILE" == *'.ESD' ]] || [[ "$SOURCE_FILE" == *'.esd' ]];then
   #Remove first 3 partitions from ESD file
   errors="$(wimdelete "$SOURCE_FILE" 1 --soft 2>&1)" || error "Failed to remove a partition from $SOURCE_FILE\nErrors:\n$errors"
   errors="$(wimdelete "$SOURCE_FILE" 1 --soft 2>&1)" || error "Failed to remove a partition from $SOURCE_FILE\nErrors:\n$errors"
-  errors="$(wimdelete "$SOURCE_FILE" 1 2>&1)" || error "Failed to remove a partition from $SOURCE_FILE\nErrors:\n$errors" #remove --soft for this last one to minimize filesize
+  errors="$(wimdelete "$SOURCE_FILE" 1 --soft 2>&1)" || error "Failed to remove a partition from $SOURCE_FILE\nErrors:\n$errors" #remove --soft for this last one to minimize filesize
   mv -f "$SOURCE_FILE" "$PWD/install.wim" || error "Failed to rename $SOURCE_FILE to install.wim"
   
   touch "$PWD/alldone" #mark this folder of microsoft stuff as complete
