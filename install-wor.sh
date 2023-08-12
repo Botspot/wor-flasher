@@ -919,10 +919,11 @@ else #Download and extract ESD
     echo "Not downloading $PWD/$winfiles/image.esd - file exists"
   else
     status "Downloading Windows ESD image"
-    wget "$URL" -O "$PWD/$winfiles/image.esd" || error "Failed to download ESD package"
+    wget "$URL" -O "$PWD/$winfiles/image.esd" || error "Failed to download ESD image"
     status -n "Verifying download... "
-    if [ "$SHA1" != "$(sha1sum "$PWD/$winfiles/image.esd" | awk '{print $1}')" ];then
-      error "\nSuccessfully downloaded ESD image, but it appears to be corrupted. Please run this script again."
+    LOCAL_SHA1="$(sha1sum "$PWD/$winfiles/image.esd" | awk '{print $1}')"
+    if [ "$SHA1" != "$LOCAL_SHA1" ];then
+      error "\nSuccessfully downloaded ESD image, but it appears to be corrupted. Please run this script again.\n(Expected SHA1 hash is $SHA1, but downloaded file has SHA1 hash $LOCAL_SHA1"
     fi
     echo_green "Done"
   fi
