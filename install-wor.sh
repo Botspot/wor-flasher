@@ -423,7 +423,7 @@ If this error persists, contact Botspot - the WoR-flasher developer."
   fi
   
   #install dependencies
-  install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse wget udftools' || exit 1
+  install_packages 'yad aria2 cabextract wimtools chntpw genisoimage exfat-fuse wget udftools bc' || exit 1
   
   #install exfat partition manipulation utility. exfatprogs replaces exfat-utils, but they cannot both be installed at once.
   if package_available exfatprogs && ! package_installed exfat-utils ;then
