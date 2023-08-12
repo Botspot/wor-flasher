@@ -40,8 +40,9 @@ wget() { #Intercept all wget commands. When possible, uses aria2c.
   local quiet=0
   
   #use these flags for aria2c
-  aria2_flags=(-c -x 16 -s 16 --max-tries=10 --retry-wait=30 --max-file-not-found=5 --http-no-cache=true --check-certificate=false --allow-overwrite=true --auto-file-renaming=false \
-      --console-log-level=error --show-console-readout=false --summary-interval=1)
+  aria2_flags=(-x 16 -s 16 --max-tries=10 --retry-wait=30 --max-file-not-found=5 --http-no-cache=true --check-certificate=false \
+    --allow-overwrite=true --auto-file-renaming=false --remove-control-file --auto-save-interval=0 \
+    --console-log-level=error --show-console-readout=false --summary-interval=1)
   
   #convert wget arguments to newline-separated list
   local IFS=$'\n'
