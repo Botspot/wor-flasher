@@ -232,8 +232,11 @@ download_from_gdrive() { #Input: file UUID and filename
   local FILEUUID="$1"
   local FILENAME="$2"
   
-  wget --load-cookies=/tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies 'https://docs.google.com/uc?export=download&id='"$FILEUUID" -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=$FILEUUID" -O "$2" && rm -rf /tmp/cookies.txt
+  #this seems broken
+  #wget --load-cookies=/tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies 'https://docs.google.com/uc?export=download&id='"$FILEUUID" -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=$FILEUUID" -O "$2" && rm -rf /tmp/cookies.txt
   
+  #but now this works
+  wget "https://drive.usercontent.google.com/download?id=$FILEUUID&confirm=t" -O "$2"
 }
 
 package_available() { #determine if the specified package-name exists in a repository
@@ -337,8 +340,10 @@ list_devs() { #Output: human-readable, colorized list of valid block devices to 
   local IFS=$'\n'
   local exitcode=1
   for device in $(lsblk -I 8,179,259 -dno NAME | sed 's+^+/dev/+g' | grep -v loop | grep -vx "$ROOT_DEV") ;do
-    echo -e "\e[1m\e[97m${device}\e[0m - \e[92m$(lsblk -dno SIZE "$device")B\e[0m - \e[36m$(get_device_name "$device")\e[0m"
-    exitcode=0
+    if [ $(lsblk -dnbo SIZE "$device") -gt 0 ];then
+      echo -e "\e[1m\e[97m${device}\e[0m - \e[92m$(lsblk -dno SIZE "$device")B\e[0m - \e[36m$(get_device_name "$device")\e[0m"
+      exitcode=0
+    fi
   done
   return $exitcode 
 }
@@ -854,7 +859,18 @@ if [ ! -d "$PWD/pi${RPI_MODEL}-uefipackage" ];then
   
   #determine latest release download URL:
   #URL="$(wget -qO- https://api.github.com/repos/pftf/RPi${RPI_MODEL}/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_UEFI_Firmware_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
-  URL='https://github.com/pftf/RPi4/releases/download/v1.33/RPi4_UEFI_Firmware_v1.33.zip'
+  
+  case "$RPI_MODEL" in
+    5)
+      URL='https://github.com/worproject/rpi5-uefi/releases/download/v0.2/RPi5_UEFI_Release_v0.2.zip'
+      ;;
+    4)
+      URL='https://github.com/pftf/RPi4/releases/download/v1.33/RPi4_UEFI_Firmware_v1.33.zip'
+      #held back on 1.33 for greater stability: https://github.com/pftf/RPi4/issues/227
+      ;;
+    3)
+      URL='https://github.com/pftf/RPi3/releases/download/v1.39/RPi3_UEFI_Firmware_v1.39.zip'
+  esac
   
   wget -O "$PWD/RPi${RPI_MODEL}_UEFI_Firmware.zip" "$URL" || error "Failed to download UEFI package"
   
