@@ -1,13 +1,13 @@
 # ![app icon](https://github.com/Botspot/wor-flasher/blob/main/logo.png?raw=true) WoR-flasher
 **Use a Linux machine to install Windows 10 or Windows 11 on a Raspberry Pi SD card.**
 
-A year ago, this was flat-out impossible.  
-In July 2021, this required following [a complicated tutorial](https://worproject.com/guides/how-to-install/from-other-os).  
+In 2020, this was flat-out impossible.  
+In 2021, this required following [a complicated tutorial](https://worproject.com/guides/how-to-install/from-other-os).  
 Now, using the new WoR-flasher, it's a *piece of cake*.  
 
 ## Useful information
 - This tool is **100% legal**. All proprietary Windows components are downloaded straight from Microsoft's update servers using [uupdump](https://uupdump.net). Consider reading [this debate](https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=318599) that took place on the Raspberry Pi Forums. At the conclusion of the thread, Raspberry Pi **employees** [confirm](https://www.raspberrypi.org/forums/viewtopic.php?f=29&t=318599#p1907313) that WoR is completely legal. The OS is unlicenced just like a regular Windows ISO, which can be activated via an activation key or by logging in with a pre-licensed Microsoft account.
-- In theory, this tool will run correctly on any Debian-based Linux, ARM or x86. However, this tool has only been tested to run correctly on Raspberry Pi OS 32-bit. Botspot (the developer of this tool) cannot be held responsible for data loss!
+- This tool should run correctly on any Debian-based Linux, ARM or x86. However, this tool has only been tested to run correctly on Raspberry Pi OS. Botspot (the developer of this tool) cannot be held responsible for data loss!
 - Need help using the WoR-flasher tool? You can [open an issue](https://github.com/Botspot/wor-flasher/issues/new/choose) or ask for help in [the Botspot Software discord server](https://discord.gg/RXSTvaUvuu).
 - Need help using Windows on Raspberry (The operating system)? Contact the WoR developers [through email](https://worproject.com/contact) or [join their Discord server](https://discord.gg/jQCpfVK).
 - By default, WoR will limit your usable RAM to 3GB due to a complication in the Pi4's CPU design. There is a workaround, but it's not the default. [Click here for details](https://worproject.com/faq#only-3-gb-of-ram-are-available-how-can-i-fix-this)
