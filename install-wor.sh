@@ -680,24 +680,29 @@ fi
 if [ -z "$RPI_MODEL" ];then
   while true; do
     echo -ne "\nChoose Raspberry Pi model to deploy Windows on:
-\e[96m1\e[0m) Raspberry Pi 4 / 400
-\e[96m2\e[0m) Raspberry Pi 3 or Pi2 v1.2
-Enter \e[96m1\e[0m or \e[96m2\e[0m: "
+\e[96m1\e[0m) Raspberry Pi 5
+\e[96m2\e[0m) Raspberry Pi 4 / 400
+\e[96m3\e[0m) Raspberry Pi 3 or Pi2 v1.2
+Enter \e[96m1\e[0m, \e[96m2\e[0m, or \e[96m3\e[0m: "
     read reply
     case $reply in
       1)
-        RPI_MODEL=4
+        RPI_MODEL=5
         break
         ;;
       2)
+        RPI_MODEL=4
+        break
+        ;;
+      3)
         RPI_MODEL=3
         break
         ;;
-      *) echo_red "Invalid option '${reply}'. Expected '1' or '2'.";;
+      *) echo_red "Invalid option '${reply}'. Expected '1', '2', or '3'.";;
     esac
   done
-elif [ "$RPI_MODEL" != 3 ] && [ "$RPI_MODEL" != 4 ];then
-  error "Unknown value for RPI_MODEL. Expected '3' or '4'."
+elif [ "$RPI_MODEL" != 3 ] && [ "$RPI_MODEL" != 4 ] && [ "$RPI_MODEL" != 5 ];then
+  error "Unknown value for RPI_MODEL. Expected '3' or '4' or '5'."
 fi
 }
 
@@ -830,25 +835,27 @@ else
   echo "Not downloading $PWD/peinstaller - folder exists"
 fi
 
-if [ ! -d "$PWD/driverpackage" ];then
-  status "Downloading ARM64 drivers"
-  #from: https://github.com/worproject/RPi-Windows-Drivers/releases
-  #example download URL (will be outdated) https://github.com/worproject/RPi-Windows-Drivers/releases/download/v0.11/RPi4_Windows_ARM64_Drivers_v0.11.zip
-  #determine latest release download URL:
-  URL="$(wget -qO- https://api.github.com/repos/worproject/RPi-Windows-Drivers/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_Windows_ARM64_Drivers_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
-  wget -O "$PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" "$URL" || error "Failed to download driver package"
-  
-  rm -rf "$PWD/driverpackage"
-  unzip -q "$PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" -d "$PWD/driverpackage"
-  if [ $? != 0 ];then
+if [ "$RPI_MODEL" != 5 ];then
+  if [ ! -d "$PWD/driverpackage" ];then
+    status "Downloading ARM64 drivers"
+    #from: https://github.com/worproject/RPi-Windows-Drivers/releases
+    #example download URL (will be outdated) https://github.com/worproject/RPi-Windows-Drivers/releases/download/v0.11/RPi4_Windows_ARM64_Drivers_v0.11.zip
+    #determine latest release download URL:
+    URL="$(wget -qO- https://api.github.com/repos/worproject/RPi-Windows-Drivers/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_Windows_ARM64_Drivers_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
+    wget -O "$PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" "$URL" || error "Failed to download driver package"
+    
     rm -rf "$PWD/driverpackage"
-    error "The unzip command failed to extract $PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
+    unzip -q "$PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" -d "$PWD/driverpackage"
+    if [ $? != 0 ];then
+      rm -rf "$PWD/driverpackage"
+      error "The unzip command failed to extract $PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
+    fi
+    
+    rm -f "$PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
+    echo
+  else
+    echo "Not downloading $PWD/driverpackage - folder exists"
   fi
-  
-  rm -f "$PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
-  echo
-else
-  echo "Not downloading $PWD/driverpackage - folder exists"
 fi
 
 if [ ! -d "$PWD/pi${RPI_MODEL}-uefipackage" ];then
@@ -1111,8 +1118,16 @@ sudo cp -r "$PWD/peinstaller/efi" "$mntpnt"/bootpart || error "Failed to copy $P
 echo "  - PE installer"
 errors="$(sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add peinstaller/winpe/2 /" 2>&1)" || error "The wimupdate command failed to add $PWD/peinstaller to boot.wim\nErrors:\n$errors"
 
-echo "  - ARM64 drivers"
-errors="$(sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add driverpackage /drivers" 2>&1)" || error "The wimupdate command failed to add $PWD/driverpackage to boot.wim\nErrors:\n$errors"
+if [ "$RPI_MODEL" == 5 ];then
+  #no wor drivers available for pi5, so make a dummy file to allow boot
+  echo "  - ARM64 drivers"
+  echo -n > "$PWD/critical"
+  errors="$(sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add critical /drivers/critical" 2>&1)" || error "The wimupdate command failed to add $PWD/critical to boot.wim\nErrors:\n$errors"
+  rm "$PWD/critical"
+else
+  echo "  - ARM64 drivers"
+  errors="$(sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add driverpackage /drivers" 2>&1)" || error "The wimupdate command failed to add $PWD/driverpackage to boot.wim\nErrors:\n$errors"
+fi
 
 echo "  - UEFI firmware"
 sudo cp -r "$PWD/pi${RPI_MODEL}-uefipackage"/* "$mntpnt"/bootpart || error "Failed to copy $PWD/pi${RPI_MODEL}-uefipackage to $mntpnt/bootpart"
