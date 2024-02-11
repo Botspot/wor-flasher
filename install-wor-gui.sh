@@ -28,26 +28,6 @@ echo "DIRECTORY: $DIRECTORY"
 [ -z "$DL_DIR" ] && DL_DIR="$HOME/wor-flasher-files"
 echo "DL_DIR: $DL_DIR"
 
-if [ -z "$CONFIG_TXT" ];then
-  #if no user-supplied CONFIG_TXT variable, set it to initial value for yad to change later
-  CONFIG_TXT="
-
-# don't change anything below this point #
-arm_64bit=1
-arm_boost=1
-enable_uart=1
-uart_2ndstage=1
-enable_gic=1
-armstub=RPI_EFI.fd
-disable_commandline_tags=1
-disable_overscan=1
-device_tree_address=0x1f0000
-device_tree_end=0x200000
-dtoverlay=miniuart-bt
-dtoverlay=upstream-pi4"
-  
-fi
-
 if [ -z "$DRY_RUN" ];then
   DRY_RUN=0
 fi
@@ -72,13 +52,13 @@ if [ -z "$RPI_MODEL" ] || [ -z "$BID" ];then
     --image="$DIRECTORY/logo-full.png" \
     --text=$'<big><b>Welcome to Windows on Raspberry!</b></big>\nThis wizard will help you easily install the full desktop version of Windows on your Raspberry Pi computer.' \
     --field="Install":CB "Windows 11!Windows 10!More options" \
-    --field="on a":CB "Pi4/Pi400!Pi3/Pi2_v1.2" \
+    --field="on a":CB "Pi5!Pi4/Pi400!Pi3/Pi2_v1.2" \
     --button='<b>Next</b>':0)"
   button=$?
   [ $button != 0 ] && exit 0
   
   WINDOWS_VER="$(echo "$output" | sed -n 1p)"
-  RPI_MODEL="$(echo "$output" | sed -n 2p | sed 's+Pi4/Pi400+4+g' | sed 's+Pi3/Pi2_v1.2+3+g')"
+  RPI_MODEL="$(echo "$output" | sed -n 2p | sed 's+Pi5+5+g' | sed 's+Pi4/Pi400+4+g' | sed 's+Pi3/Pi2_v1.2+3+g')"
   
   case "$WINDOWS_VER" in
     'Windows 11' | 'Windows 10')
@@ -405,6 +385,55 @@ Choose this if:
   fi
 fi
 }
+
+#if no user-supplied CONFIG_TXT variable, set it to initial value for yad to change later
+if [ -z "$CONFIG_TXT" ];then
+  if [ "$RPI_MODEL" == 3 ];then
+    
+    CONFIG_TXT="
+
+# don't change anything below this point #
+arm_64bit=1
+disable_commandline_tags=2
+disable_overscan=1
+enable_uart=1
+uart_2ndstage=1
+armstub=RPI_EFI.fd
+device_tree_address=0x1f0000
+device_tree_end=0x200000
+# Uncomment if you have trouble with the UART console during boot
+#core_freq=250"
+  
+  elif [ "$RPI_MODEL" == 4 ];then
+    CONFIG_TXT="
+
+# don't change anything below this point #
+arm_64bit=1
+arm_boost=1
+enable_uart=1
+uart_2ndstage=1
+enable_gic=1
+armstub=RPI_EFI.fd
+disable_commandline_tags=1
+disable_overscan=1
+device_tree_address=0x1f0000
+device_tree_end=0x200000
+dtoverlay=miniuart-bt
+dtoverlay=upstream-pi4"
+    
+  elif [ "$RPI_MODEL" == 5 ];then
+    CONFIG_TXT="
+
+# don't change anything below this point #
+armstub=RPI_EFI.fd
+device_tree_address=0x1f0000
+device_tree_end=0x210000
+pciex4_reset=0.
+framebuffer_depth=32
+disable_overscan=1
+usb_max_current_enable=1
+force_turbo=1"
+fi
 
 { #confirmation dialog and edit config.txt
 
