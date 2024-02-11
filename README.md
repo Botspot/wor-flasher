@@ -10,9 +10,10 @@ Now, using the new WoR-flasher, it's a *piece of cake*.
 - This tool should run correctly on any Debian-based Linux, ARM or x86. However, this tool has only been tested to run correctly on Raspberry Pi OS. Botspot (the developer of this tool) cannot be held responsible for data loss!
 - Need help using the WoR-flasher tool? You can [open an issue](https://github.com/Botspot/wor-flasher/issues/new/choose) or ask for help in [the Botspot Software discord server](https://discord.gg/RXSTvaUvuu).
 - Need help using Windows on Raspberry (The operating system)? Contact the WoR developers [through email](https://worproject.com/contact) or [join their Discord server](https://discord.gg/jQCpfVK).
-- By default, WoR will limit your usable RAM to 3GB due to a complication in the Pi4's CPU design. There is a workaround, but it's not the default. [Click here for details](https://worproject.com/faq#only-3-gb-of-ram-are-available-how-can-i-fix-this)
 - WoR does not currently support WiFi. The necessary drivers simply do not exist. (yet) See [this page](https://github.com/worproject/RPi-Windows-Drivers) for current driver status.
-- You won't be able to debloat the OS because the Wine tool is unable to run NTLite. Performance is about the same, debloated or not, but there will be extra apps you'll have to manually remove if you wish to remove the extra preinstalled apps.
+- You won't be able to use WoR-Flasher to debloat the OS. Performance is about the same, debloated or not, but there will be extra apps you'll have to manually remove if you wish to remove the extra preinstalled apps.
+- Raspberry Pi 4 has its RAM limited to 3GB. There is a workaround, but it's not the default. [Click here for details](https://worproject.com/faq#only-3-gb-of-ram-are-available-how-can-i-fix-this)
+- Raspberry Pi 5 support is now here, and it runs fast but there are no drivers. SD card boot seems more reliable, and for internet you need a USB to Ethernet adapter.
 
 ## WoR-flasher walkthrough
 ### Install WoR-flasher
@@ -95,10 +96,10 @@ This script is actually what does the flashing: The gui script is just a front-e
 The `install-wor.sh` script is designed to be used within other, larger bash scripts. For automation and customization, `install-wor.sh` will detect and obey certain environment variables:
 
 - `DL_DIR`: Set this variable to change the default download location. By default, it's `~/wor-flasher-files`.
-- `UUID`: Set this variable to choose an exact Windows update ID. Example value: "`db8ec987-d136-4421-afb8-2ef109396b00`". When this variable is set, `install-wor.sh` will not ask the user which Windows version to use.
+- `BID`: Set this variable to choose an exact Windows version ID. Example value: "`22631.2861`". When this variable is set, `install-wor.sh` will not ask the user which Windows version to use.
 - `WIN_LANG`: Set this variable to choose a language for the Windows image. Example value: "`en-us`". When this variable is set, `install-wor.sh` will not ask the user which language to use.
 - `RPI_MODEL`: Set this variable to choose Raspberry Pi model. Allowed values: "`3`", "`4`". When this variable is set, `install-wor.sh` will not ask the user which Raspberry Pi model to use.
-- `DEVICE`: Set this variable to the device you want to flash. Example value: "`/dev/sda`" When this variable is set, `install-wor.sh` will not ask the user which device to use.
+- `DEVICE`: Set this variable to the device you want to flash. Example value: "`/dev/sda`". When this variable is set, `install-wor.sh` will not ask the user which device to use.
 - `CAN_INSTALL_ON_SAME_DRIVE`: Set this variable to "`1`" if the device is larger than 25GB and you wish to install Windows on itself. Otherwise, set it to "`0`".
 - `CONFIG_TXT`: Set this variable to customize the `/boot/config.txt` of the resulting drive. This is commonly used for overclocking or to change HDMI settings. [This is the default value.](https://github.com/pftf/RPi4/blob/master/config.txt)
 - `RUN_MODE`: Set this to "`gui`" if you want `install-wor.sh` to display graphical error messages.
@@ -179,11 +180,11 @@ Usage:
 ```
 list_devs
 ```
-- `get_uuid` - Get the latest Windows update ID for either Windows 10 or Windows 11  
+- `get_bid` - Get the latest Windows build ID for either Windows 10 or Windows 11  
 Input: "`10`" or "`11`"
 Usage:  
 ```
-get_uuid 11
+get_bid 11
 ```
 - `get_space_free` - Get the available disk space of a folder  
 Input: path to folder to check  
@@ -191,18 +192,11 @@ Usage:  
 ```
 get_space_free ~/wor-flasher-files
 ```
-- `check-uuid` - Determine if the given UUID is a valid format. (Windows update IDs are in a UUID format)  
-Input: UUID to check  
-Usage:  
-```
-check_uuid db8ec987-d136-4421-afb8-2ef109396b00
-#this command will return an exit code of zero if valid, otherwise it will return en exit code of 1
-```
 - `get_os_name` - Get human-readable name of operating system.  
-Input: valid Windows update ID  
+Input: valid Windows build ID  
 Usage:
 ```
-get_os_name db8ec987-d136-4421-afb8-2ef109396b00
+get_os_name 22631.2861
 ```
 
 ### Example function and variable usage
@@ -215,7 +209,7 @@ set -a
 source ~/wor-flasher/install-wor.sh source
 
 #Determine the latest Windows 11 update ID using a function
-UUID="$(get_uuid 11)"
+BID="$(get_bid 11)"
 
 #set destination RPi model
 RPI_MODEL=4
