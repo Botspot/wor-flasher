@@ -433,6 +433,7 @@ framebuffer_depth=32
 disable_overscan=1
 usb_max_current_enable=1
 force_turbo=1"
+  fi
 fi
 
 { #confirmation dialog and edit config.txt
