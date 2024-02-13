@@ -232,11 +232,9 @@ download_from_gdrive() { #Input: file UUID and filename
   local FILEUUID="$1"
   local FILENAME="$2"
   
-  #this seems broken
-  #wget --load-cookies=/tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies 'https://docs.google.com/uc?export=download&id='"$FILEUUID" -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=$FILEUUID" -O "$2" && rm -rf /tmp/cookies.txt
+  wget --load-cookies=/tmp/cookies.txt "https://drive.usercontent.google.com/download?$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies 'https://drive.usercontent.google.com/download?export=download&id='"$FILEUUID" -O- | sed 's/input type="hidden" name="//g ; s/" value="/=/g ; s/"></\&/g' | grep -o '><export=.*/form>' | sed 's/><//g ; s+&/form>++g')" -O "$FILENAME"
+  rm -rf /tmp/cookies.txt
   
-  #but now this works
-  wget "https://drive.usercontent.google.com/download?id=$FILEUUID&confirm=t" -O "$2"
 }
 
 package_available() { #determine if the specified package-name exists in a repository
@@ -814,13 +812,14 @@ if [ ! -d "$PWD/peinstaller" ];then
   [ -z "$PE_INSTALLER_SHA256" ] && error "Failed to determine a hashsum for WoR PE-based installer.\nURL: http://worproject.com/dldserv/worpe/gethashlatest.php"
   
   #from: https://worproject.com/downloads#windows-on-raspberry-pe-based-installer
-  URL='http://worproject.com/dldserv/worpe/downloadlatest.php'
+  #URL='http://worproject.com/dldserv/worpe/downloadlatest.php'
   #determine Google Drive FILEUUID from given redirect URL
-  FILEUUID="$(wget --spider --content-disposition --trust-server-names -O /dev/null "$URL" 2>&1 | grep Location | sed 's/^Location: //g' | sed 's/ \[following\]$//g' | grep 'drive\.google\.com' | sed 's+.*/++g' | sed 's/.*&id=//g')"
-  download_from_gdrive "$FILEUUID" "$PWD/WoR-PE_Package.zip" || error "Failed to download Windows on Raspberry PE-based installer"
+  #FILEUUID="$(wget --spider --content-disposition --trust-server-names -O /dev/null "$URL" 2>&1 | grep Location | sed 's/^Location: //g' | sed 's/ \[following\]$//g' | grep 'drive\.google\.com' | sed 's+.*/++g' | sed 's/.*&id=//g')"
+  #download_from_gdrive "$FILEUUID" "$PWD/WoR-PE_Package.zip" || error "Failed to download Windows on Raspberry PE-based installer"
+  wget https://github.com/Botspot/wor-flasher/releases/download/pe-storage/WoR-PE_Package_1.1.0.zip -O "$PWD/WoR-PE_Package.zip"
   
   if [ "$PE_INSTALLER_SHA256" != "$(sha256sum "$PWD/WoR-PE_Package.zip" | awk '{print $1}' | tr '[a-z]' '[A-Z]')" ];then
-    error "PE-based installer integrity check failed"
+    error "Downloaded PE-based installer does not match expected file"
   fi
   
   rm -rf "$PWD/peinstaller"
