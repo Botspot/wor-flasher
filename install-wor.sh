@@ -816,7 +816,7 @@ if [ ! -d "$PWD/peinstaller" ];then
   #determine Google Drive FILEUUID from given redirect URL
   #FILEUUID="$(wget --spider --content-disposition --trust-server-names -O /dev/null "$URL" 2>&1 | grep Location | sed 's/^Location: //g' | sed 's/ \[following\]$//g' | grep 'drive\.google\.com' | sed 's+.*/++g' | sed 's/.*&id=//g')"
   #download_from_gdrive "$FILEUUID" "$PWD/WoR-PE_Package.zip" || error "Failed to download Windows on Raspberry PE-based installer"
-  wget https://github.com/Botspot/wor-flasher/releases/download/pe-storage/WoR-PE_Package_1.1.0.zip -O "$PWD/WoR-PE_Package.zip"
+  wget http://worproject.com/dldserv/worpe/downloadlatest.php -O "$PWD/WoR-PE_Package.zip"
   
   if [ "$PE_INSTALLER_SHA256" != "$(sha256sum "$PWD/WoR-PE_Package.zip" | awk '{print $1}' | tr '[a-z]' '[A-Z]')" ];then
     error "Downloaded PE-based installer does not match expected file"
