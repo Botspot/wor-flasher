@@ -868,7 +868,7 @@ if [ ! -d "$PWD/pi${RPI_MODEL}-uefipackage" ];then
   
   case "$RPI_MODEL" in
     5)
-      URL='https://github.com/worproject/rpi5-uefi/releases/download/v0.2/RPi5_UEFI_Release_v0.2.zip'
+      URL='https://github.com/worproject/rpi5-uefi/releases/download/v0.3/RPi5_UEFI_Release_v0.3.zip'
       ;;
     4)
       URL='https://github.com/pftf/RPi4/releases/download/v1.33/RPi4_UEFI_Firmware_v1.33.zip'
