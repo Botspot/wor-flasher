@@ -9,13 +9,12 @@ Pi4:
 Simple 2.1GHz overclock, very stable: (for average user)
 over_voltage=6
 arm_freq=2147
-gpu_freq=700
+gpu_freq=300
 
 Medium overclock, still quite stable: (for power users feeling average overclock might be too slow)
 
 arm_freq=2300
-gpu_freq=750
-gpu_mem=32
+gpu_freq=300
 over_voltage=14
 force_turbo=1
 
@@ -25,5 +24,4 @@ initial_turbo=60
 over_voltage=15
 arm_freq_min=100
 arm_freq=2350
-gpu_freq=800
-gpu_mem=512
+gpu_freq=300
