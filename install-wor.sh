@@ -730,8 +730,8 @@ fi
 }
 
 { #CAN_INSTALL_ON_SAME_DRIVE
-if [ "$(get_size_raw "$DEVICE")" -lt $((7*1024*1024*1024)) ];then
-  error "Drive $DEVICE is smaller than 7GB and cannot be used."
+if [ "$(get_size_raw "$DEVICE")" -lt $((8*1024*1024*1024)) ];then
+  error "Drive $DEVICE is smaller than 8GB and cannot be used."
 fi
 
 if [ -z "$CAN_INSTALL_ON_SAME_DRIVE" ] && [ "$(get_size_raw "$DEVICE")" -ge $((25*1024*1024*1024)) ];then
@@ -785,7 +785,7 @@ elif [ "$CAN_INSTALL_ON_SAME_DRIVE" == 1 ];then
   if [ "$(get_size_raw "$DEVICE")" -lt $((25*1024*1024*1024)) ];then
     error "Drive $DEVICE is smaller than 25GB and cannot be used for self-installation.\nPlease set CAN_INSTALL_ON_SAME_DRIVE=0"
   fi
-  #no need to check if drive is >7GB, because it was already done earlier
+  #no need to check if drive is >8GB, because it was already done earlier
 fi
 }
 
@@ -1062,7 +1062,7 @@ sync
 if [ $CAN_INSTALL_ON_SAME_DRIVE == 1 ];then
   sudo parted -s "$DEVICE" mkpart primary 1000MB 19000MB || error "Failed to make 19GB primary partition 2 on ${DEVICE}!"
 else
-  sudo parted -s "$DEVICE" mkpart primary 1000MB 6000MB || error "Failed to make 6GB primary partition 2 on ${DEVICE}!"
+  sudo parted -s "$DEVICE" mkpart primary 1000MB 7000MB || error "Failed to make 7GB primary partition 2 on ${DEVICE}!"
 fi
 sudo parted -s "$DEVICE" set 2 msftdata on || error "Failed to enable msftdata flag on $DEVICE partition 2"
 sync
