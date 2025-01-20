@@ -1,6 +1,9 @@
 # ![app icon](https://github.com/Botspot/wor-flasher/blob/main/logo.png?raw=true) WoR-flasher
 **Use a Linux machine to install Windows 10 or Windows 11 on a Raspberry Pi SD card.**
 
+## 🚨 This repository is looking for a maintainer!
+**I don't use wor-flasher personally, and I don't have the time to maintain it. If you use wor-flasher, and you can read and understand the script, please contact me somehow and I can grant you write privileges to the repository.**
+
 In 2020, this was flat-out impossible.  
 In 2021, this required following [a complicated tutorial](https://worproject.com/guides/how-to-install/from-other-os).  
 Now, using the new WoR-flasher, it's a *piece of cake*.  
