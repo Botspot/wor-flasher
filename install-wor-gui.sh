@@ -46,6 +46,16 @@ setup || exit 1
 #this array stores flags that are used in all yad windows - saves on the typing and makes it easy to change an attribute on all dialogs from one place.
 yadflags=(--center --width=400 --height=250 --window-icon="$DIRECTORY/logo.png" --title="Windows on Raspberry" --separator='\n')
 
+#display BVM announcement
+yad "${yadflags[@]}" \
+    --image="$DIRECTORY/announcement.png" \
+    --button='<b>Check out BVM</b>':0 \
+    --button='<b>Proceed with WoR-Flasher</b>':1
+if [ "$?" == 0 ];then
+  x-www-browser 'https://github.com/Botspot/bvm' &
+  exit 0
+fi
+
 { #choose destination RPi model and windows build ID
 if [ -z "$RPI_MODEL" ] || [ -z "$BID" ];then
   output="$(yad "${yadflags[@]}" --height=0 --form --columns=2 \
