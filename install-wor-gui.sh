@@ -47,10 +47,10 @@ setup || exit 1
 yadflags=(--center --width=400 --height=250 --window-icon="$DIRECTORY/logo.png" --title="Windows on Raspberry" --separator='\n')
 
 #display BVM announcement
-yad "${yadflags[@]}" \
+yad "${yadflags[@]}" --buttons-layout=spread \
     --image="$DIRECTORY/announcement.png" \
-    --button='<b>Check out BVM</b>':0 \
-    --button='<b>Proceed with WoR-Flasher</b>':1
+    --button='<b>Proceed with WoR-Flasher</b>':1 \
+    --button='<b>Check out the BVM project</b>':0
 if [ "$?" == 0 ];then
   x-www-browser 'https://github.com/Botspot/bvm' &
   exit 0
