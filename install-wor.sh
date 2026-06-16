@@ -464,13 +464,19 @@ if [ -e "$DIRECTORY" ] && [ ! -f "${DIRECTORY}/no-update" ];then
     status "Auto-updating wor-flasher for the latest features and improvements..."
     status "To disable this next time, create a file at ${DIRECTORY}/no-update"
     sleep 1
-    git pull | cat #piping through cat makes git noninteractive
     
-    status "git pull finished. Reloading script..."
-    set -a #export all variables so the script can see them
-    #run updated script
-    "$0" "$@"
-    exit $?
+    (cd "$DIRECTORY"
+    git restore . #abandon changes to tracked files (otherwise users who modified this script are left behind)
+    git -c color.ui=always pull | cat #piping through cat makes git noninteractive
+    exit "${PIPESTATUS[0]}")
+    
+    if [ $? == 0 ];then
+      status "git pull finished. Reloading script..."
+      "$0" "$@"
+      exit $?
+    else
+      warning "git pull failed. Continuing..."
+    fi
   fi
   cd "$prepwd"
 fi
@@ -926,6 +932,7 @@ else #Download and extract ESD
   URL="$(echo "$catalog" | grep '<FilePath>' -m 1 | sed 's/<FilePath>//g' | sed 's/<\/FilePath>//g')"
   SIZE="$(echo "$catalog" | grep '<Size>' -m 1 | sed 's/<Size>//g' | sed 's/<\/Size>//g')"
   SHA1="$(echo "$catalog" | grep '<Sha1>' -m 1 | sed 's/<Sha1>//g' | sed 's/<\/Sha1>//g')"
+  SHA256="$(echo "$catalog" | grep '<Sha256>' -m 1 | sed 's/<Sha256>//g' | sed 's/<\/Sha256>//g')"
   
   #DL_DIR could be on a FAT partition, which is only OK if no files are larger than 4GB.
   #Make sure that the ESD is smaller than 4GB if DL_DIR is on FAT-type partition
@@ -938,19 +945,35 @@ else #Download and extract ESD
   winfiles="winfiles_${BID}_${WIN_LANG}"
   mkdir -p "$PWD/$winfiles"
   
-  if [ -f "$PWD/$winfiles/image.esd" ] && [ "$SHA1" == "$(sha1sum "$PWD/$winfiles/image.esd" | awk '{print $1}')" ];then
-    echo "Not downloading $PWD/$winfiles/image.esd - file exists"
+  SOURCE_FILE="$PWD/$winfiles/image.esd"
+  
+  if [ -z "$URL" ] || [ -z "$SIZE" ] || ([ -z "$SHA1" ] && [ -z "$SHA256" ]);then
+    error "One of URL, SIZE, or SHA1/SHA256 variables is empty!\nURL: $URL\nSIZE: $SIZE\nSHA1: $SHA1\nSHA256: $SHA256\nHere's the full catalog output: '$catalog'"
+  fi
+  
+  if [ -f "$SOURCE_FILE" ] && [ ! -z "$SHA1" ] && [ "$SHA1" == "$(echo "  - Checking validity of already downloaded image.esd" 1>&2 ; sha1sum "$SOURCE_FILE" | awk '{print $1}')" ];then
+    echo "Not downloading $SOURCE_FILE - file exists"
+  elif [ -f "$SOURCE_FILE" ] && [ ! -z "$SHA256" ] && [ "$SHA256" == "$(echo "  - Checking validity of already downloaded image.esd" 1>&2 ; sha256sum "$SOURCE_FILE" | awk '{print $1}')" ];then
+    echo "Not downloading $SOURCE_FILE - file exists"
   else
     status "Downloading Windows ESD image"
     wget "$URL" -O "$PWD/$winfiles/image.esd" || error "Failed to download ESD image"
     status -n "Verifying download... "
-    LOCAL_SHA1="$(sha1sum "$PWD/$winfiles/image.esd" | awk '{print $1}')"
-    if [ "$SHA1" != "$LOCAL_SHA1" ];then
-      error "\nSuccessfully downloaded ESD image, but it appears to be corrupted. Please run this script again.\n(Expected SHA1 hash is $SHA1, but downloaded file has SHA1 hash $LOCAL_SHA1"
+    if [ ! -z "$SHA1" ];then
+      local LOCAL_SHA1="$(sha1sum "$SOURCE_FILE" | awk '{print $1}')"
+      if [ "$SHA1" != "$LOCAL_SHA1" ];then
+        rm -f "$SOURCE_FILE"
+        error "\nSuccessfully downloaded ESD image $SOURCE_FILE, but it appears to be corrupted. Please run this script again.\n(Expected SHA1 hash is $SHA1, but downloaded file has SHA1 hash $LOCAL_SHA1"
+      fi
+    elif [ ! -z "$SHA256" ];then
+      local LOCAL_SHA256="$(sha256sum "$SOURCE_FILE" | awk '{print $1}')"
+      if [ "$SHA256" != "$LOCAL_SHA256" ];then
+        rm -f "$SOURCE_FILE"
+        error "\nSuccessfully downloaded ESD image $SOURCE_FILE, but it appears to be corrupted. Please run this script again.\n(Expected SHA256 hash is $SHA256, but downloaded file has SHA256 hash $LOCAL_SHA256"
+      fi
     fi
     echo_green "Done"
   fi
-  SOURCE_FILE="$PWD/$winfiles/image.esd"
 fi
 }
 
