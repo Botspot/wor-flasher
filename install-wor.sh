@@ -960,13 +960,13 @@ else #Download and extract ESD
     wget "$URL" -O "$PWD/$winfiles/image.esd" || error "Failed to download ESD image"
     status -n "Verifying download... "
     if [ ! -z "$SHA1" ];then
-      local LOCAL_SHA1="$(sha1sum "$SOURCE_FILE" | awk '{print $1}')"
+      LOCAL_SHA1="$(sha1sum "$SOURCE_FILE" | awk '{print $1}')"
       if [ "$SHA1" != "$LOCAL_SHA1" ];then
         rm -f "$SOURCE_FILE"
         error "\nSuccessfully downloaded ESD image $SOURCE_FILE, but it appears to be corrupted. Please run this script again.\n(Expected SHA1 hash is $SHA1, but downloaded file has SHA1 hash $LOCAL_SHA1"
       fi
     elif [ ! -z "$SHA256" ];then
-      local LOCAL_SHA256="$(sha256sum "$SOURCE_FILE" | awk '{print $1}')"
+      LOCAL_SHA256="$(sha256sum "$SOURCE_FILE" | awk '{print $1}')"
       if [ "$SHA256" != "$LOCAL_SHA256" ];then
         rm -f "$SOURCE_FILE"
         error "\nSuccessfully downloaded ESD image $SOURCE_FILE, but it appears to be corrupted. Please run this script again.\n(Expected SHA256 hash is $SHA256, but downloaded file has SHA256 hash $LOCAL_SHA256"
